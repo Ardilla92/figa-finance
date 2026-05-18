@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Figa Lunch — Finance OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0a0c;--surface:#111114;--surface2:#18181c;--surface3:#1e1e26;
+  --border:#26262e;--border2:#32323c;
+  --accent:#6366f1;--accent-dim:rgba(99,102,241,.1);--accent-light:#818cf8;
+  --green:#22d3a5;--green-dim:rgba(34,211,165,.1);
+  --red:#f87171;--red-dim:rgba(248,113,113,.1);
+  --orange:#fb923c;--yellow:#fcd34d;
+  --text:#f0f0f4;--text2:#9090a8;--text3:#50505e;
+  --font:'Syne',sans-serif;--mono:'Space Mono',monospace;--r:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(99,102,241,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.02) 1px,transparent 1px);background-size:52px 52px;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:210px;flex-shrink:0;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-logo{padding:20px 16px 14px;border-bottom:1px solid var(--border)}
+.sidebar-logo .co{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.sidebar-logo .ti{font-size:16px;font-weight:800;color:var(--accent-light);line-height:1.2}
+.nav-section{padding:12px 0}
+.nav-label{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);padding:0 14px 5px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;border-left:2px solid transparent;transition:.12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent-light);border-left-color:var(--accent);background:var(--accent-dim)}
+.nav-item .ico{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.sidebar-ytd{padding:8px 14px 14px}
+.ytd-row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0}
+.ytd-row .yl{font-size:10px;color:var(--text3)}
+.ytd-row .yv{font-size:12px;font-family:var(--mono);font-weight:700}
+.sidebar-footer{margin-top:auto;padding:10px 14px;border-top:1px solid var(--border);font-size:9px;color:var(--text3);font-family:var(--mono)}
+
+/* MAIN */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.panel{display:none;flex:1;overflow:hidden;flex-direction:column}
+.panel.active{display:flex}
+
+/* TOPBAR */
+.topbar{padding:9px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;background:var(--surface)}
+.topbar-title{font-size:13px;font-weight:800;color:var(--text);margin-right:4px}
+.ptabs{display:flex;gap:3px}
+.ptab{font-size:10px;padding:4px 11px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font);font-weight:700;transition:.1s}
+.ptab:hover{color:var(--text)}
+.ptab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sep{width:1px;height:18px;background:var(--border);margin:0 2px;flex-shrink:0}
+.toggles{display:flex;gap:3px;flex-wrap:wrap}
+.tog{font-size:10px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font);font-weight:700;transition:.1s}
+.tog:hover{color:var(--text2)}
+.tog.on{background:var(--surface3);color:var(--text);border-color:var(--border2)}
+.tog[data-m="ventas"].on{color:var(--accent-light);border-color:var(--accent)}
+.tog[data-m="cmv"].on{color:var(--red);border-color:var(--red)}
+.tog[data-m="margen"].on{color:var(--green);border-color:var(--green)}
+.tog[data-m="comis"].on{color:var(--orange);border-color:var(--orange)}
+.tog[data-m="pct"].on{color:var(--text2);border-color:var(--border2)}
+.tog[data-m="forecast"].on{color:var(--yellow);border-color:var(--yellow)}
+.expand-btn{font-size:10px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--font);font-weight:700;transition:.1s;margin-left:auto}
+.expand-btn:hover{color:var(--text2);border-color:var(--border2)}
+
+/* ── OVERVIEW ── */
+.ov-scroll{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c,var(--accent))}
+.kpi-card .kl{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.kpi-card .kv{font-size:28px;font-weight:800;font-family:var(--mono);line-height:1;margin-bottom:6px;letter-spacing:-.02em}
+.kpi-card .ks{font-size:11px;color:var(--text3)}
+.kpi-card .ks .up{color:var(--green)}
+.kpi-card .ks .dn{color:var(--red)}
+.kpi-card .ks .neu{color:var(--text2)}
+
+.charts-row{display:grid;grid-template-columns:1fr 260px;gap:10px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.chart-card .cht{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:14px}
+.chart-canvas-wrap{height:130px;position:relative}
+
+.breakdown-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.bk-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.bk-row:last-child{border-bottom:none}
+.bk-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.bk-name{font-size:12px;color:var(--text2);flex:1}
+.bk-pct{font-size:11px;font-family:var(--mono);color:var(--text3);width:36px;text-align:right}
+.bk-val{font-size:12px;font-family:var(--mono);color:var(--text);width:72px;text-align:right;font-weight:700}
+.bk-bar-track{flex:none;width:60px;height:3px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.bk-bar-fill{height:100%;border-radius:2px}
+
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.insights-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.in-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+.in-item{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)}
+.in-item:last-child{border-bottom:none}
+.in-ico{font-size:14px;flex-shrink:0;line-height:1.4;font-family:var(--mono)}
+.in-text{font-size:12px;color:var(--text2);line-height:1.5}
+.in-text strong{color:var(--text);font-weight:700}
+
+.pnl-mini-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.pm-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.pm-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border)}
+.pm-row:last-child{border-bottom:none;padding-top:8px;margin-top:2px}
+.pm-row .pl{font-size:12px;color:var(--text2)}
+.pm-row .pv{font-size:14px;font-family:var(--mono);font-weight:700}
+.pm-row.sub{background:var(--surface2);margin:0 -18px;padding:7px 18px}
+.pm-row.sub .pl{font-size:12px;color:var(--text);font-weight:700}
+.pm-row.sub .pv{font-size:15px}
+.pm-row.tot{background:var(--accent-dim);margin:0 -18px -16px;padding:10px 18px;border-radius:0 0 10px 10px;border-bottom:none}
+.pm-row.tot .pl{font-size:13px;color:var(--accent-light);font-weight:700}
+.pm-row.tot .pv{font-size:18px;color:var(--yellow)}
+
+/* ── P&L TABLE ── */
+.pnl-scroll{flex:1;overflow-y:auto}
+.pnl-table{width:100%;border-collapse:collapse;min-width:580px}
+.pnl-head{position:sticky;top:0;z-index:10}
+.pnl-head th{padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);text-align:right;font-family:var(--mono);font-weight:400;white-space:nowrap}
+.pnl-head th:first-child{text-align:left;width:200px;padding-left:20px}
+.pnl-head th.col-ventas{color:var(--accent-light)}
+.pnl-head th.col-cmv{color:var(--red)}
+.pnl-head th.col-margen{color:var(--green)}
+.pnl-head th.col-comis{color:var(--orange)}
+.pnl-head th.col-forecast{color:var(--yellow)}
+
+.pnl-table tr.r-section td{background:var(--surface2);padding:6px 16px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-family:var(--mono)}
+.pnl-table tr.r-section td:first-child{padding-left:20px}
+.pnl-table tr.r-brand td{border-bottom:1px solid var(--border);padding:11px 16px;cursor:pointer;background:var(--surface)}
+.pnl-table tr.r-brand:hover td{background:var(--surface2)}
+.pnl-table tr.r-brand td:first-child{padding-left:20px}
+.pnl-table tr.r-canal td{border-bottom:1px solid var(--border);padding:8px 16px;background:var(--bg)}
+.pnl-table tr.r-canal td:first-child{padding-left:36px}
+.pnl-table tr.r-subtotal td{border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);padding:11px 16px;background:var(--surface2)}
+.pnl-table tr.r-subtotal td:first-child{padding-left:20px}
+.pnl-table tr.r-total td{border-top:1px solid var(--accent);padding:13px 16px;background:var(--accent-dim)}
+.pnl-table tr.r-total td:first-child{padding-left:20px}
+.pnl-table tr.r-spacer td{height:6px;background:var(--bg);border:none}
+.pnl-table tr.r-hidden{display:none}
+
+.pnl-table td{text-align:right;font-size:14px;font-family:var(--mono);color:var(--text2);white-space:nowrap;vertical-align:middle}
+.pnl-table td:first-child{text-align:left;font-family:var(--font);font-size:13px}
+
+.row-label{display:flex;align-items:center;gap:7px}
+.chev{font-size:12px;color:var(--text3);transition:transform .15s;flex-shrink:0}
+.chev.open{transform:rotate(90deg)}
+.brand-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.canal-arrow{font-size:11px;color:var(--text3)}
+.lname{white-space:nowrap}
+.r-brand .lname{font-weight:700;font-size:14px;color:var(--text)}
+.r-subtotal .lname{font-weight:700;font-size:14px;color:var(--text)}
+.r-total .lname{font-weight:800;font-size:15px;color:var(--accent-light)}
+.r-canal .lname{font-size:13px;color:var(--text2)}
+
+.v-pos{color:var(--green);font-weight:700}
+.v-neg{color:var(--red)}
+.v-acc{color:var(--accent-light);font-weight:700}
+.v-muted{color:var(--text3)}
+.v-orange{color:var(--orange)}
+.v-yellow{color:var(--yellow);font-weight:700}
+.v-hi{color:var(--text);font-weight:700}
+.fc-good{color:var(--green)}
+.fc-bad{color:var(--red)}
+
+/* ── MARCAS ── */
+.marcas-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);flex:1;overflow-y:auto}
+.marca-card{background:var(--surface);padding:18px 20px;transition:.1s}
+.marca-card:hover{background:var(--surface2)}
+.marca-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.marca-name{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:800}
+.marca-share{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;background:var(--surface3);color:var(--text2)}
+.marca-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.mstat{background:var(--surface3);border-radius:var(--r);padding:10px 12px}
+.mstat-l{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:4px}
+.mstat-v{font-size:16px;font-family:var(--mono);font-weight:700}
+.bar-track{height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s cubic-bezier(.22,1,.36,1)}
+.canal-mini{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px}
+.canal-mini:last-child{border-bottom:none}
+.canal-mini-n{color:var(--text2)}
+.canal-mini-v{font-family:var(--mono);color:var(--text);font-weight:700}
+
+/* ── SUELDOS ── */
+.sueldos-scroll{flex:1;overflow-y:auto}
+.s-head-row{display:grid;grid-template-columns:1fr 120px 120px 130px;padding:7px 20px;background:var(--surface);border-bottom:1px solid var(--border2);position:sticky;top:0;z-index:5}
+.s-head-row span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);text-align:right;font-family:var(--mono)}
+.s-head-row span:first-child{text-align:left}
+.s-section{border-bottom:1px solid var(--border)}
+.s-section-head{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--surface2);cursor:pointer;transition:.1s}
+.s-section-head:hover{background:var(--surface3)}
+.s-sec-name{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
+.s-sec-right{display:flex;align-items:center;gap:16px}
+.s-sec-bruto{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.s-sec-total{font-size:15px;font-family:var(--mono);font-weight:700;color:var(--text)}
+.s-sec-chev{font-size:11px;color:var(--text3)}
+.s-emp-row{display:grid;grid-template-columns:1fr 120px 120px 130px;padding:9px 20px;border-bottom:1px solid var(--border);align-items:center;transition:.1s}
+.s-emp-row:hover{background:var(--surface2)}
+.s-emp-name{font-size:13px;color:var(--text)}
+.s-emp-val{font-size:13px;font-family:var(--mono);text-align:right;color:var(--text2)}
+.s-emp-total{font-size:14px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--text)}
+.s-grand{display:grid;grid-template-columns:1fr 120px 120px 130px;padding:12px 20px;background:var(--accent-dim);border-top:1px solid var(--accent)}
+.s-grand span{font-size:14px;font-family:var(--mono);text-align:right;font-weight:700;color:var(--accent-light)}
+.s-grand span:first-child{text-align:left;font-family:var(--font);font-size:13px;font-weight:800}
+
+/* FLUJO */
+.flujo-scroll{flex:1;overflow-y:auto;padding:0}
+.flujo-table{width:100%;border-collapse:collapse}
+.flujo-table th{padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);text-align:right;font-family:var(--mono);font-weight:400;white-space:nowrap}
+.flujo-table th:first-child{text-align:left;width:220px;padding-left:20px}
+.flujo-table th.ing{color:var(--green)}
+.flujo-table th.eg{color:var(--red)}
+.flujo-table th.net{color:var(--accent-light)}
+.flujo-table td{padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;font-family:var(--mono);text-align:right;color:var(--text2);white-space:nowrap;vertical-align:middle}
+.flujo-table td:first-child{text-align:left;font-family:var(--font);font-size:12px;padding-left:20px;cursor:pointer}
+.flujo-table td:first-child.indent{padding-left:34px;font-size:11px;color:var(--text2)}
+.flujo-table tr.f-section td{background:var(--surface2);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:6px 16px 6px 20px;font-family:var(--mono)}
+.flujo-table tr.f-group td{background:var(--surface);cursor:pointer}
+.flujo-table tr.f-group:hover td{background:var(--surface2)}
+.flujo-table tr.f-group td:first-child{font-weight:700;color:var(--text);font-size:13px}
+.flujo-table tr.f-item td{background:var(--bg)}
+.flujo-table tr.f-item:hover td{background:var(--surface)}
+.flujo-table tr.f-sub td{background:var(--surface2);font-weight:700;border-top:1px solid var(--border2)}
+.flujo-table tr.f-sub td:first-child{color:var(--text);font-size:13px;font-weight:700}
+.flujo-table tr.f-total td{background:var(--accent-dim);border-top:1px solid var(--accent);font-weight:700}
+.flujo-table tr.f-total td:first-child{color:var(--accent-light);font-size:14px}
+.flujo-table tr.f-saldo td{background:var(--surface3);border-top:2px solid var(--border2)}
+.flujo-table tr.f-saldo td:first-child{color:var(--text);font-size:12px;font-weight:700}
+.flujo-table tr.f-hidden{display:none}
+.v-ing{color:var(--green);font-weight:700}
+.v-eg{color:var(--red)}
+.v-net-pos{color:var(--accent-light);font-weight:700}
+.v-net-neg{color:var(--red);font-weight:700}
+.v-saldo-pos{color:var(--yellow);font-weight:700}
+.v-saldo-neg{color:var(--red);font-weight:700}
+.flujo-kpis{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);flex-shrink:0}
+.flujo-kpi{padding:10px 16px;border-right:1px solid var(--border)}
+.flujo-kpi:last-child{border-right:none}
+.flujo-kpi-l{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
+.flujo-kpi-v{font-size:16px;font-weight:700;font-family:var(--mono)}
+.flujo-kpi-s{font-size:9px;color:var(--text3);margin-top:2px}
+
+/* RvF */
+.rvf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.rvf-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.rvf-card-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+.rvf-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rvf-row:last-child{border-bottom:none}
+.rvf-row .rl{color:var(--text2)}
+.rvf-row .rv{font-family:var(--mono);font-weight:700}
+.rvf-row .rf{font-family:var(--mono);color:var(--text3)}
+.rvf-row .rd{font-family:var(--mono);font-size:11px;padding:2px 6px;border-radius:4px}
+.rd-up{background:var(--green-dim);color:var(--green)}
+.rd-dn{background:var(--red-dim);color:var(--red)}
+.rd-neu{background:var(--surface3);color:var(--text2)}
+.rvf-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.rvf-table{width:100%;border-collapse:collapse}
+.rvf-table th{padding:9px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);text-align:right;font-family:var(--mono)}
+.rvf-table th:first-child{text-align:left}
+.rvf-table td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;font-family:var(--mono);text-align:right;color:var(--text2)}
+.rvf-table td:first-child{text-align:left;font-family:var(--font);font-size:13px;color:var(--text)}
+.rvf-table tr:last-child td{border-bottom:none}
+.rvf-table tr.rvf-sub td{background:var(--surface2);font-weight:700;color:var(--text)}
+.rvf-table tr.rvf-tot td{background:var(--accent-dim);font-weight:700;color:var(--accent-light)}
+.rvf-acc-bar{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-top:4px}
+.rvf-acc-fill{height:100%;border-radius:3px}
+
+/* SCROLLBAR */
+.chart-strip{height:180px;background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px 10px;flex-shrink:0;position:relative}
+.chart-strip canvas{display:block}
+.chart-strip-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+</style>
+</head>
+<body>
+<div id="loading-banner" style="display:none;position:fixed;inset:0;background:rgba(10,10,12,.88);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px"><div style="width:36px;height:36px;border:3px solid #1e1e26;border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite"></div><span style="color:#818cf8;font-family:Space Mono,monospace;font-size:12px;letter-spacing:.08em">Cargando datos...</span></div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="co">MLM ARG S.L.</div>
+    <div class="ti">Finance OS <span id="last-updated" style="color:var(--text3);font-size:8px;display:block;margin-top:2px">datos locales</span></div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Vistas</div>
+    <div class="nav-item active" onclick="showPanel('overview',this)"><span class="ico">◈</span> Overview</div>
+    <div class="nav-item" onclick="showPanel('pnl',this)"><span class="ico">▤</span> P&L Interactivo</div>
+    <div class="nav-item" onclick="showPanel('marcas',this)"><span class="ico">◱</span> Por marca</div>
+    <div class="nav-item" onclick="showPanel('sueldos',this)"><span class="ico">◲</span> Sueldos</div>
+    <div class="nav-item" onclick="showPanel('rvf',this)"><span class="ico">⊙</span> Real vs Forecast</div>
+    <div class="nav-item" onclick="showPanel('flujo',this)"><span class="ico">⇅</span> Flujo de caja</div>
+    <div class="nav-item" onclick="showPanel('analisis',this)"><span class="ico">◎</span> Análisis Abril</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">YTD Ene–Abr 2026</div>
+    <div class="sidebar-ytd">
+      <div class="ytd-row"><span class="yl">Ventas</span><span class="yv" style="color:var(--accent-light)">512.943€</span></div>
+      <div class="ytd-row"><span class="yl">MB%</span><span class="yv" style="color:var(--green)">70,9%</span></div>
+      <div class="ytd-row"><span class="yl">Comis%</span><span class="yv" style="color:var(--orange)">18,8%</span></div>
+      <div class="ytd-row"><span class="yl">EBITDA</span><span class="yv" style="color:var(--accent-light)">55.948€</span></div>
+      <div class="ytd-row"><span class="yl">Resultado</span><span class="yv" style="color:var(--yellow)">25.121€</span></div>
+    </div>
+  </div>
+  <div class="sidebar-footer">v2 · 2026</div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="panel-overview">
+    <div class="topbar">
+      <span class="topbar-title">Overview</span>
+      <div class="ptabs" id="ov-tabs">
+        <button class="ptab" onclick="setOvPeriod('enero',this)">Ene</button>
+        <button class="ptab" onclick="setOvPeriod('febrero',this)">Feb</button>
+        <button class="ptab" onclick="setOvPeriod('marzo',this)">Mar</button>
+        <button class="ptab active" onclick="setOvPeriod('abril',this)">Abr</button>
+        <button class="ptab" onclick="setOvPeriod('acumulado',this)">YTD</button>
+      </div>
+    </div>
+    <div class="ov-scroll" id="ov-scroll"></div>
+  </div>
+
+  <!-- P&L -->
+  <div class="panel" id="panel-pnl">
+    <div class="topbar">
+      <span class="topbar-title">P&L</span>
+      <div class="ptabs" id="pnl-tabs">
+        <button class="ptab" onclick="toggleComparePeriod('enero')">Ene</button>
+        <button class="ptab" onclick="toggleComparePeriod('febrero')">Feb</button>
+        <button class="ptab" onclick="toggleComparePeriod('marzo')">Mar</button>
+        <button class="ptab active" onclick="toggleComparePeriod('abril')">Abr</button>
+        <button class="ptab" onclick="toggleComparePeriod('acumulado')">YTD</button>
+      </div>
+      <div class="sep"></div>
+      <div class="toggles">
+        <button class="tog on" data-m="ventas" onclick="toggleCol(this)">Ventas</button>
+        <button class="tog on" data-m="cmv" onclick="toggleCol(this)">CMV</button>
+        <button class="tog on" data-m="margen" onclick="toggleCol(this)">Margen</button>
+        <button class="tog on" data-m="comis" onclick="toggleCol(this)">Comisiones</button>
+        <button class="tog" data-m="pct" onclick="toggleCol(this)">%MB</button>
+        <button class="tog" data-m="forecast" onclick="toggleCol(this)">vs Forecast</button>
+      </div>
+      <button class="expand-btn" onclick="toggleAllBrands()">Expandir todo</button>
+      <button class="expand-btn" onclick="exportToCSV()" style="color:var(--green);border-color:var(--green);margin-left:4px">↓ Exportar CSV</button>
+    </div>
+    <div class="pnl-scroll">
+      <table class="pnl-table">
+        <thead class="pnl-head" id="pnl-head"></thead>
+        <tbody id="pnl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MARCAS -->
+  <div class="panel" id="panel-marcas">
+    <div class="topbar">
+      <span class="topbar-title">Por marca</span>
+      <div class="ptabs" id="marcas-tabs">
+        <button class="ptab" onclick="setMarcasPeriod('enero',this)">Ene</button>
+        <button class="ptab" onclick="setMarcasPeriod('febrero',this)">Feb</button>
+        <button class="ptab" onclick="setMarcasPeriod('marzo',this)">Mar</button>
+        <button class="ptab active" onclick="setMarcasPeriod('abril',this)">Abr</button>
+        <button class="ptab" onclick="setMarcasPeriod('acumulado',this)">YTD</button>
+      </div>
+    </div>
+    <div class="marcas-grid" id="marcas-grid"></div>
+  </div>
+
+  <!-- SUELDOS -->
+  <div class="panel" id="panel-sueldos">
+    <div class="topbar">
+      <span class="topbar-title">Sueldos</span>
+      <div class="ptabs" id="sueldos-tabs">
+        <button class="ptab" onclick="setSueldosPeriod('enero',this)">Ene</button>
+        <button class="ptab" onclick="setSueldosPeriod('febrero',this)">Feb</button>
+        <button class="ptab" onclick="setSueldosPeriod('marzo',this)">Mar</button>
+        <button class="ptab active" onclick="setSueldosPeriod('abril',this)">Abr</button>
+      </div>
+    </div>
+    <div class="sueldos-scroll" id="sueldos-scroll"></div>
+  </div>
+
+  <!-- REAL vs FORECAST -->
+  <div class="panel" id="panel-rvf">
+    <div class="topbar">
+      <span class="topbar-title">Real vs Forecast</span>
+      <div class="ptabs" id="rvf-tabs">
+        <button class="ptab active" onclick="setRvfView('mensual',this)">Mensual</button>
+        <button class="ptab" onclick="setRvfView('acumulado',this)">Acumulado</button>
+        <button class="ptab" onclick="setRvfView('lineas',this)">Por línea</button>
+      </div>
+    </div>
+    <div class="chart-strip">
+      <div class="chart-strip-title">Real vs Forecast — Ventas, Margen Bruto y Resultado Neto</div>
+      <canvas id="rvf-chart" ></canvas>
+    </div>
+    <div class="ov-scroll" id="rvf-scroll"></div>
+  </div>
+
+
+  <!-- FLUJO DE CAJA -->
+  <div class="panel" id="panel-flujo">
+    <div class="topbar">
+      <span class="topbar-title">Flujo de caja</span>
+      <div class="ptabs" id="flujo-tabs">
+        <button class="ptab" onclick="setFlujoPeriod('enero',this)">Ene</button>
+        <button class="ptab" onclick="setFlujoPeriod('febrero',this)">Feb</button>
+        <button class="ptab" onclick="setFlujoPeriod('marzo',this)">Mar</button>
+        <button class="ptab active" onclick="setFlujoPeriod('abril',this)">Abr</button>
+        <button class="ptab" onclick="setFlujoPeriod('acumulado',this)">YTD</button>
+      </div>
+    </div>
+    <div class="chart-strip">
+      <div class="chart-strip-title">Entradas vs Salidas — Evolución mensual</div>
+      <canvas id="flujo-chart" ></canvas>
+    </div>
+    <div class="flujo-kpis" id="flujo-kpis"></div>
+    <div class="flujo-scroll">
+      <table class="flujo-table">
+        <thead id="flujo-head"></thead>
+        <tbody id="flujo-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+
+
+  <!-- ANÁLISIS -->
+  <div class="panel" id="panel-analisis">
+    <div class="topbar">
+      <span class="topbar-title">Análisis</span>
+      <span style="font-size:11px;color:var(--text3)">Abril 2026 · Variación vs marzo</span>
+    </div>
+    <div class="ov-scroll" id="analisis-scroll"></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+
+
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const MESES = ['enero','febrero','marzo','abril'];
+const MARCAS_META = {
+  'Figa':{color:'#5b8dee'},'Deligreens':{color:'#22d3a5'},'Mamacuina':{color:'#f97316'},
+  'PokeClub':{color:'#d946a8'},'Pomodoro':{color:'#eab308'},'Scopely':{color:'#6366f1'},
+  'Catering':{color:'#94a3b8'},'Yuki':{color:'#a78bfa'},'TooGoodToGo':{color:'#4ade80'},
+  'Otros/Chegus':{color:'#64748b'},
+};
+// ════════════════════════════════════════════════════════════════════
+// API CONFIG — pegá tu URL de Apps Script acá
+// ════════════════════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbyuKL7s63dW1FK-MvE5g3bZ005SLsA7msA7GV9wMz5muyUAMuidquLMEM392QgWn8hSvg/exec';
+
+// ── Datos hardcoded como fallback (hasta que conectes la API) ────────
+let DATA = {
+  enero:{ventas_total:99194.16,ventas_comida:91332.60,camareras:7861.56,cmv_total:30313.26,mb_total:68880.90,comis_total:19809.18,sueldos:27579.89,cargas:6207.19,packaging:1632.92,otros_g:5654.06,resultado:-3861.34,ebitda:3638.66,forecast_v:99194.16,forecast_neto:-3861.34,
+    marcas:[
+      {n:'Figa',v:15520.94,cmv:5459.40,comis:2912.59,sueldos_bruto:4616.71,sueldos_cargas:801.64,canales:[{n:'Kombo',v:11362.14,comis:2912.59},{n:'Página web',v:2947.83,comis:0},{n:'Fudeat',v:1210.97,comis:0}]},
+      {n:'Deligreens',v:7744.22,cmv:2975.99,comis:1729.22,sueldos_bruto:2303.52,sueldos_cargas:399.98,canales:[{n:'Kombo',v:6126.05,comis:1532.18},{n:'Página web',v:612.68,comis:0},{n:'Fudeat',v:148.67,comis:0},{n:'Catering',v:856.82,comis:197.04}]},
+      {n:'Mamacuina',v:637.35,cmv:175.00,comis:128.81,sueldos_bruto:189.58,sueldos_cargas:32.92,canales:[{n:'Página web',v:149.13,comis:0},{n:'Kombo',v:488.22,comis:128.81}]},
+      {n:'PokeClub',v:1620.44,cmv:81.77,comis:389.08,sueldos_bruto:482.00,sueldos_cargas:83.69,canales:[{n:'Página web',v:125.62,comis:0},{n:'Kombo',v:1494.82,comis:389.08}]},
+      {n:'Pomodoro',v:2793.53,cmv:849.66,comis:645.42,sueldos_bruto:830.94,sueldos_cargas:144.28,canales:[{n:'Página web',v:125.62,comis:0},{n:'Kombo',v:1031.55,comis:269.78},{n:'Catering',v:1636.36,comis:375.64}]},
+      {n:'Scopely',v:60193.56,cmv:16930.30,comis:12074.14,sueldos_bruto:15390.64,sueldos_cargas:4281.71,canales:[{n:'Comedor',v:52332.00,cmv:16930.30,comis:12074.14},{n:'Camareras',v:7861.56,comis:0}]},
+      {n:'Catering',v:5156.87,cmv:1120.44,comis:658.89,sueldos_bruto:1726.51,sueldos_cargas:0,canales:[{n:'Kombo',v:3081.82,comis:658.89},{n:'Fudeat',v:343.05,comis:0},{n:'Página web',v:1732.00,comis:0}]},
+      {n:'TooGoodToGo',v:68.20,cmv:0,comis:0,canales:[]},
+      {n:'Otros/Chegus',v:5527.27,cmv:2720.68,comis:1271.04,sueldos_bruto:2040.00,sueldos_cargas:462.96,canales:[]},
+    ]},
+  febrero:{ventas_total:117045.41,ventas_comida:107265.41,camareras:9780.00,cmv_total:32665.23,mb_total:84380.18,comis_total:23237.15,sueldos:29843.61,cargas:5781.96,packaging:2196.98,otros_g:6861.75,resultado:4412.03,ebitda:10875.64,forecast_v:118364.34,forecast_neto:6888.95,
+    marcas:[
+      {n:'Figa',v:17675.80,cmv:6234.16,comis:2937.77,sueldos_bruto:4731.29,sueldos_cargas:519.34,canales:[{n:'Página web',v:5430.53,comis:0},{n:'Kombo',v:11393.81,comis:2937.77},{n:'Fudeat',v:851.46,comis:0}]},
+      {n:'Deligreens',v:9370.55,cmv:2770.00,comis:2126.93,sueldos_bruto:2508.22,sueldos_cargas:275.32,canales:[{n:'Página web',v:432.35,comis:0},{n:'Kombo',v:8576.45,comis:2126.93},{n:'Fudeat',v:361.75,comis:0}]},
+      {n:'Mamacuina',v:846.24,cmv:145.21,comis:182.42,sueldos_bruto:226.51,sueldos_cargas:24.86,canales:[{n:'Página web',v:148.97,comis:0},{n:'Kombo',v:697.27,comis:182.42}]},
+      {n:'PokeClub',v:1889.43,cmv:696.52,comis:433.36,sueldos_bruto:505.74,sueldos_cargas:55.51,canales:[{n:'Página web',v:221.34,comis:0},{n:'Kombo',v:1668.09,comis:433.36}]},
+      {n:'Pomodoro',v:3626.22,cmv:1181.51,comis:847.41,sueldos_bruto:970.63,sueldos_cargas:106.54,canales:[{n:'Página web',v:355.13,comis:0},{n:'Kombo',v:3271.09,comis:847.41}]},
+      {n:'Scopely',v:73422.91,cmv:19079.74,comis:14742.22,sueldos_bruto:17442.49,sueldos_cargas:5225.79,canales:[{n:'Comedor',v:63642.91,cmv:19079.74,comis:14742.22},{n:'Camareras',v:9780.00,comis:0}]},
+      {n:'Catering',v:8905.16,cmv:2151.78,comis:1546.68,sueldos_bruto:3033.31,sueldos_cargas:0,canales:[{n:'Kombo',v:7020.92,comis:1546.68},{n:'Fudeat',v:154.00,comis:0},{n:'Página web',v:1730.24,comis:0}]},
+      {n:'TooGoodToGo',v:0,cmv:0,comis:0,canales:[]},
+      {n:'Otros/Chegus',v:1309.09,cmv:406.29,comis:301.97,canales:[]},
+    ]},
+  marzo:{ventas_total:145944.18,ventas_comida:133414.18,camareras:12530.00,cmv_total:41824.06,mb_total:104120.11,comis_total:25945.12,sueldos:34185.25,cargas:5989.40,packaging:2030.20,otros_g:8034.03,resultado:14409.59,ebitda:21932.30,forecast_v:133636.53,forecast_neto:14233.59,
+    marcas:[
+      {n:'Figa',v:20802.60,cmv:5852.60,comis:3748.92,sueldos_bruto:5708.28,sueldos_cargas:324.46,canales:[{n:'Página web',v:5896.93,comis:0},{n:'Kombo',v:13299.45,comis:3411.61},{n:'Fudeat',v:1606.22,comis:337.31}]},
+      {n:'Deligreens',v:7829.81,cmv:2617.89,comis:1700.65,sueldos_bruto:2148.52,sueldos_cargas:122.12,canales:[{n:'Página web',v:1127.57,comis:0},{n:'Kombo',v:6474.91,comis:1643.82},{n:'Fudeat',v:227.33,comis:56.83}]},
+      {n:'Mamacuina',v:837.11,cmv:0,comis:172.98,sueldos_bruto:229.70,sueldos_cargas:13.06,canales:[{n:'Página web',v:182.11,comis:0},{n:'Kombo',v:655.00,comis:172.98}]},
+      {n:'PokeClub',v:3429.64,cmv:797.55,comis:768.10,sueldos_bruto:941.10,sueldos_cargas:53.49,canales:[{n:'Página web',v:411.46,comis:0},{n:'Fudeat',v:1509.09,comis:390.83},{n:'Kombo',v:1509.09,comis:377.27}]},
+      {n:'Pomodoro',v:2376.98,cmv:865.88,comis:557.99,sueldos_bruto:652.25,sueldos_cargas:37.07,canales:[{n:'Página web',v:234.93,comis:0},{n:'Kombo',v:1723.91,comis:453.45},{n:'Fudeat',v:418.14,comis:104.54}]},
+      {n:'Scopely',v:87306.51,cmv:25362.75,comis:14997.52,sueldos_bruto:19960.70,sueldos_cargas:5379.18,canales:[{n:'Comedor',v:74776.51,cmv:25362.75,comis:14997.52},{n:'Camareras',v:12530.00,comis:0}]},
+      {n:'Catering',v:15063.13,cmv:4441.66,comis:3331.51,sueldos_bruto:3746.70,sueldos_cargas:60.02,canales:[{n:'Kombo',v:14522.95,comis:3331.51},{n:'Fudeat',v:540.18,comis:0}]},
+      {n:'Yuki',v:2931.74,cmv:1215.36,comis:667.46,sueldos_bruto:798.00,sueldos_cargas:0,canales:[{n:'Kombo',v:2647.73,comis:607.42},{n:'Página web',v:43.85,comis:0},{n:'Fudeat',v:240.16,comis:60.04}]},
+      {n:'TooGoodToGo',v:119.65,cmv:0,comis:0,canales:[]},
+      {n:'Otros/Chegus',v:5247.00,cmv:670.38,comis:0,canales:[]},
+    ]},
+  abril:{ventas_total:152068.64,ventas_comida:138682.39,camareras:13386.25,cmv_total:44334.72,mb_total:107733.92,comis_total:27461.43,sueldos:37373.20,cargas:7579.68,packaging:2840.19,otros_g:8566.53,resultado:11720.07,ebitda:19501.89,forecast_v:146452.66,forecast_neto:17904.84,
+    marcas:[
+      {n:'Figa',v:22749.08,cmv:7647.65,comis:4927.86,canales:[{n:'Kombo',v:12398.32,comis:4784.90},{n:'Página web',v:4017.99,comis:0},{n:'Fudeat',v:571.82,comis:142.96},{n:'Catering',v:5760.95,comis:0,sub:[{n:'JML',v:1258.27},{n:'Lifelink',v:273.60},{n:'La Cueva de Jan Aie',v:81.00},{n:'Vampire Films S.L.',v:351.00},{n:'ABA Studio Productions S.L.',v:292.36},{n:'Runroom SL',v:460.00},{n:'Josep Uris Pons',v:594.00},{n:'Barcelona Alternative Media SL',v:1368.00},{n:'Associació Juvenil AMEBA',v:1082.72}]}]},
+      {n:'Deligreens',v:8361.27,cmv:3631.08,comis:1951.11,canales:[{n:'Kombo',v:7082.04,comis:1793.50},{n:'Página web',v:648.78,comis:0},{n:'Fudeat',v:630.45,comis:157.61}]},
+      {n:'Mamacuina',v:904.69,cmv:170.67,comis:178.45,canales:[{n:'Página web',v:232.87,comis:0},{n:'Kombo',v:671.82,comis:178.45}]},
+      {n:'PokeClub',v:2431.87,cmv:769.24,comis:513.53,canales:[{n:'Página web',v:419.59,comis:0},{n:'Kombo',v:1759.73,comis:450.39},{n:'Fudeat',v:252.55,comis:63.14}]},
+      {n:'Pomodoro',v:3492.76,cmv:901.44,comis:796.01,canales:[{n:'Página web',v:222.22,comis:0},{n:'Kombo',v:1350.09,comis:772.94},{n:'Fudeat',v:92.27,comis:23.07},{n:'Catering/Scopely',v:1828.18,comis:0}]},
+      {n:'Scopely',v:93896.36,cmv:27216.35,comis:17354.26,canales:[{n:'Comedor',v:80510.11,cmv:27216.35,comis:17354.26},{n:'Camareras',v:13386.25,comis:0}]},
+      {n:'Catering',v:12776.65,cmv:1949.02,comis:925.05,canales:[{n:'Kombo',v:7121.45,comis:792.37},{n:'Fudeat',v:5655.20,comis:132.68,sub:[{n:'ZenRows SL',v:79.20},{n:'FARMAPROJECTS SAU',v:1040.00},{n:'OFFF EVENTS S.L.',v:4536.00}]}]},
+      {n:'Yuki',v:3696.53,cmv:1536.78,comis:0,canales:[{n:'Kombo',v:3062.02,comis:0},{n:'Página web',v:103.78,comis:0},{n:'Fudeat',v:530.73,comis:0}]},
+      {n:'TooGoodToGo',v:95.70,cmv:0,comis:0,canales:[]},
+      {n:'Otros/Chegus',v:3663.73,cmv:512.49,comis:815.16,canales:[]},
+    ]},
+};
+
+
+let SUELDOS = {
+  enero:[
+    {u:'Figa (% ventas 54,8%)',tb:4616.71,tc:801.64,tt:5418.35,emps:[{n:'Pool Boxlunch — asignado por ventas',b:4616.71,c:801.64,t:5418.35}]},
+    {u:'Deligreens (% ventas 27,3%)',tb:2303.52,tc:399.98,tt:2703.50,emps:[{n:'Pool Boxlunch — asignado por ventas',b:2303.52,c:399.98,t:2703.50}]},
+    {u:'Mamacuina (% ventas 2,3%)',tb:189.58,tc:32.92,tt:222.50,emps:[{n:'Pool Boxlunch — asignado por ventas',b:189.58,c:32.92,t:222.50}]},
+    {u:'PokeClub (% ventas 5,7%)',tb:482.00,tc:83.69,tt:565.69,emps:[{n:'Pool Boxlunch — asignado por ventas',b:482.00,c:83.69,t:565.69}]},
+    {u:'Pomodoro (% ventas 9,9%)',tb:830.94,tc:144.28,tt:975.22,emps:[{n:'Pool Boxlunch — asignado por ventas',b:830.94,c:144.28,t:975.22}]},
+    {u:'Scopely Producción',tb:12576.69,tc:3478.43,tt:16055.12,emps:[{n:'Roman',b:1213.98,c:390.31,t:1604.29},{n:'Maxi',b:1472.84,c:473.53,t:1946.37},{n:'Bruno',b:1638.84,c:526.88,t:2165.72},{n:'Paco',b:2500.00,c:803.75,t:3303.75},{n:'Joelson',b:1213.85,c:390.27,t:1604.12},{n:'Varios',b:580.00,c:0,t:580.00}]},
+    {u:'Scopely Camareras',tb:2203.95,tc:803.28,tt:3007.23,emps:[{n:'Camareras (grupo)',b:2203.95,c:803.28,t:3007.23}]},
+    {u:'Admin / Mara',tb:1440.00,tc:462.96,tt:1902.96,emps:[{n:'Mara',b:1440.00,c:462.96,t:1902.96}]},
+    {u:'Catering',tb:2040.00,tc:0,tt:2040.00,emps:[{n:'Catering (grupo)',b:2040.00,c:0,t:2040.00}]},
+    {u:'Otros/Chegus',tb:0,tc:462.96,tt:462.96,emps:[{n:'Cargas SS asignadas',b:0,c:462.96,t:462.96}]},
+  ],
+  febrero:[
+    {u:'Figa (% ventas 52,9%)',tb:4731.29,tc:519.34,tt:5250.63,emps:[{n:'Pool Boxlunch — asignado por ventas',b:4731.29,c:519.34,t:5250.63}]},
+    {u:'Deligreens (% ventas 28,0%)',tb:2508.22,tc:275.32,tt:2783.54,emps:[{n:'Pool Boxlunch — asignado por ventas',b:2508.22,c:275.32,t:2783.54}]},
+    {u:'Mamacuina (% ventas 2,5%)',tb:226.51,tc:24.86,tt:251.37,emps:[{n:'Pool Boxlunch — asignado por ventas',b:226.51,c:24.86,t:251.37}]},
+    {u:'PokeClub (% ventas 5,7%)',tb:505.74,tc:55.51,tt:561.25,emps:[{n:'Pool Boxlunch — asignado por ventas',b:505.74,c:55.51,t:561.25}]},
+    {u:'Pomodoro (% ventas 10,9%)',tb:970.63,tc:106.54,tt:1077.17,emps:[{n:'Pool Boxlunch — asignado por ventas',b:970.63,c:106.54,t:1077.17}]},
+    {u:'Scopely Producción',tb:13608.91,tc:3833.58,tt:17442.49,emps:[{n:'Roman',b:1106.48,c:355.74,t:1462.22},{n:'Maxi',b:1306.09,c:419.89,t:1725.98},{n:'Varios Scopely',b:1360.00,c:0,t:1360.00}]},
+    {u:'Scopely Camareras',tb:2898.99,tc:966.80,tt:3865.79,emps:[{n:'Camareras (grupo)',b:2898.99,c:966.80,t:3865.79}]},
+    {u:'Admin / Mara',tb:1440.00,tc:462.96,tt:1902.96,emps:[{n:'Mara',b:1440.00,c:462.96,t:1902.96}]},
+    {u:'Catering',tb:3033.31,tc:0,tt:3033.31,emps:[{n:'Catering (grupo)',b:3033.31,c:0,t:3033.31}]},
+  ],
+  marzo:[
+    {u:'Figa (% ventas 59,0%)',tb:5708.28,tc:324.46,tt:6032.74,emps:[{n:'Pool Boxlunch — asignado por ventas',b:5708.28,c:324.46,t:6032.74}]},
+    {u:'Deligreens (% ventas 22,2%)',tb:2148.52,tc:122.12,tt:2270.64,emps:[{n:'Pool Boxlunch — asignado por ventas',b:2148.52,c:122.12,t:2270.64}]},
+    {u:'Mamacuina (% ventas 2,4%)',tb:229.70,tc:13.06,tt:242.76,emps:[{n:'Pool Boxlunch — asignado por ventas',b:229.70,c:13.06,t:242.76}]},
+    {u:'PokeClub (% ventas 9,7%)',tb:941.10,tc:53.49,tt:994.59,emps:[{n:'Pool Boxlunch — asignado por ventas',b:941.10,c:53.49,t:994.59}]},
+    {u:'Pomodoro (% ventas 6,7%)',tb:652.25,tc:37.07,tt:689.32,emps:[{n:'Pool Boxlunch — asignado por ventas',b:652.25,c:37.07,t:689.32}]},
+    {u:'Scopely Producción',tb:15478.61,tc:4584.75,tt:20063.36,emps:[{n:'Roman',b:1272.43,c:409.10,t:1681.53},{n:'Maxi',b:1718.22,c:552.41,t:2270.63},{n:'Joelson',b:1060.51,c:342.00,t:1060.51},{n:'Bruno',b:1772.56,c:569.89,t:2342.45},{n:'Paco',b:3527.82,c:858.27,t:3527.82},{n:'Lau',b:646.98,c:157.41,t:646.98},{n:'Julieta',b:1846.12,c:449.13,t:1846.12},{n:'Manuel',b:1975.34,c:168.90,t:1975.34}]},
+    {u:'Scopely Camareras',tb:4482.09,tc:794.43,tt:5276.52,emps:[{n:'Camareras (grupo)',b:4482.09,c:794.43,t:5276.52}]},
+    {u:'Admin / Mara',tb:1866.97,tc:600.22,tt:2467.19,emps:[{n:'Mara',b:1866.97,c:600.22,t:2467.19}]},
+    {u:'Catering',tb:3746.70,tc:60.02,tt:3806.72,emps:[{n:'Catering (grupo)',b:3746.70,c:60.02,t:3806.72}]},
+    {u:'Yuki',tb:798.00,tc:0,tt:798.00,emps:[{n:'Culi',b:798.00,c:0,t:798.00}]},
+  ],
+  abril:[
+    {u:'Figa / Boxlunch',tb:10673.89,tc:927.67,tt:12684.83,emps:[{n:'Fiama',b:1386.67,c:-668.20,t:702.29},{n:'Jose',b:1279.35,c:449.81,t:1686.14},{n:'Culi',b:0,c:0,t:750.00},{n:'Cecilia',b:1685.49,c:-795.84,t:1165.32},{n:'Leo',b:1630.06,c:524.06,t:2240.57},{n:'Rodri',b:1218.82,c:391.86,t:1548.72},{n:'Araceli/Analia',b:315.00,c:10.51,t:895.37},{n:'Caro',b:1424.37,c:457.93,t:2297.51},{n:'Mariana',b:1734.13,c:557.54,t:2088.91}]},
+    {u:'Scopely Producción',tb:14496.42,tc:4673.53,tt:19169.95,emps:[{n:'Roman',b:1272.43,c:409.10,t:2399.70},{n:'Maxi',b:1718.22,c:552.41,t:1924.26},{n:'Varios Scopely',b:580.00,c:0,t:962.00},{n:'Ousmane',b:0,c:0,t:1281.06},{n:'Joelson',b:558.54,c:501.97,t:955.80},{n:'Bruno',b:1772.56,c:569.89,t:2342.45},{n:'Paco',b:2669.55,c:858.27,t:3527.82},{n:'Lau',b:489.57,c:157.41,t:1312.08},{n:'Julieta',b:1396.99,c:449.13,t:2489.70},{n:'Manuel',b:1975.08,c:168.90,t:1975.08}]},
+    {u:'Scopely Camareras',tb:4770.08,tc:1179.73,tt:5949.81,emps:[{n:'Camareras (grupo)',b:4770.08,c:1179.73,t:5949.81}]},
+    {u:'Admin / Mara',tb:2154.61,tc:499.80,tt:2654.41,emps:[{n:'Mara',b:2154.61,c:499.80,t:2654.41}]},
+    {u:'Catering',tb:3500.00,tc:243.88,tt:3743.88,emps:[{n:'Catering (grupo)',b:3500.00,c:243.88,t:3743.88}]},
+  ],
+};
+
+const FORECAST = {
+  enero:   {v:99194.16,  cmv:30313.26, mb:68880.90,  comis:19809.18, sueldos:33787.08, alquiler:3500, socios:7500.00,  packaging:1632.92, otros:6513.06, ebitda:3638.66,  neto:-3861.34},
+  febrero: {v:118364.34, cmv:32575.30, mb:85789.04,  comis:23672.87, sueldos:35000.00, alquiler:3500, socios:7772.70,  packaging:1954.52, otros:7000.00, ebitda:14661.95, neto:6888.95},
+  marzo:   {v:133636.53, cmv:36484.96, mb:97151.57,  comis:26727.31, sueldos:35728.88, alquiler:3500, socios:7772.70,  packaging:2189.10, otros:7000.00, ebitda:22006.10, neto:14233.59},
+  abril:   {v:146452.66, cmv:39942.80, mb:106509.86, comis:29290.53, sueldos:38645.23, alquiler:3500, socios:7772.70,  packaging:2396.57, otros:7000.00, ebitda:25677.56, neto:17904.84},
+  mayo:    {v:142318.66, cmv:39191.60, mb:103127.06, comis:28463.73, sueldos:44441.94, alquiler:3500, socios:9272.70,  packaging:2351.50, otros:7000.00, ebitda:17369.89, neto:8097.20},
+  junio:   {v:151156.66, cmv:41700.50, mb:109456.16, comis:30231.33, sueldos:44441.94, alquiler:3500, socios:9272.70,  packaging:2502.03, otros:7000.00, ebitda:21780.36, neto:12508.16},
+};
+
+
+// ── Estado de carga ──────────────────────────────────────────────────
+let dataLoaded = false;
+let dataLoadError = null;
+
+async function fetchData() {
+  if (!API_URL) {
+    console.log('Sin API_URL — usando datos estáticos');
+    dataLoaded = true;
+    return;
+  }
+  const banner = document.getElementById('loading-banner');
+  if (banner) banner.style.display = 'flex';
+
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (!json.ok) throw new Error('API error');
+
+    // Override DATA and SUELDOS with fresh data
+    DATA = json.data;
+    SUELDOS = json.sueldos;
+
+    // Update sidebar updated time
+    const updEl = document.getElementById('last-updated');
+    if (updEl) updEl.textContent = 'Actualizado: ' + new Date(json.updated).toLocaleString('es-ES', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+    dataLoaded = true;
+    dataLoadError = null;
+    console.log('Datos cargados desde API:', Object.keys(DATA));
+  } catch(err) {
+    dataLoadError = err.message;
+    dataLoaded = true;
+    console.warn('Error cargando API, usando datos estáticos:', err.message);
+  } finally {
+    if (banner) banner.style.display = 'none';
+    // Re-render active panel
+    renderOverview();
+    renderPnlCompare();
+  }
+}
+
+
+
+// ════════════════════════════════════════════════════════════════════
+// API CONFIG — pegá tu URL de Apps Script acá
+
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let ovPeriod='abril', pnlPeriod='abril', marcasPeriod='abril', sueldosPeriod='abril';
+let comparePeriods=['marzo','abril'];
+let compareMode=true;
+let expanded={}, allExp=false, sueldoExp={};
+let visibleCols={ventas:true,cmv:true,margen:true,comis:true,pct:false,forecast:false};
+let ovChart=null;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function fmt(n){if(n==null||n===0)return '—';const a=Math.abs(Math.round(n));return(n<0?'-':'')+'€'+a.toLocaleString('es-ES')}
+function p(a,b){if(!b)return'—';return(Math.round(a/b*1000)/10).toFixed(1)+'%'}
+function fd(a,b){if(!b)return'—';const d=(a-b)/Math.abs(b)*100;return(d>=0?'+':'')+d.toFixed(1)+'%'}
+function getAcum(){
+  const out={ventas_total:0,cmv_total:0,mb_total:0,comis_total:0,sueldos:0,cargas:0,resultado:0,ebitda:0,forecast_v:0,forecast_neto:0};
+  MESES.forEach(m=>{Object.keys(out).forEach(k=>{out[k]+=(DATA[m][k]||0)})});
+  const am={};
+  MESES.forEach(mes=>{DATA[mes].marcas.forEach(m=>{if(!am[m.n])am[m.n]={n:m.n,v:0,cmv:0,comis:0,canales:m.canales};am[m.n].v+=m.v||0;am[m.n].cmv+=m.cmv||0;am[m.n].comis+=m.comis||0;})});
+  out.marcas=Object.values(am);
+  return out;
+}
+function getPD(p){return p==='acumulado'?getAcum():DATA[p]}
+function getPrev(p){const i=MESES.indexOf(p);return i>0?DATA[MESES[i-1]]:null}
+
+
+function toggleComparePeriod(period){
+
+  if(comparePeriods.includes(period)){
+    if(comparePeriods.length > 1){
+      comparePeriods = comparePeriods.filter(p=>p!==period);
+    }
+  }else{
+    if(comparePeriods.length >= 2){
+      comparePeriods.shift();
+    }
+    comparePeriods.push(period);
+  }
+
+  document.querySelectorAll('#pnl-tabs .ptab').forEach(b=>{
+    b.classList.remove('active');
+
+    const map = {
+      'Ene':'enero',
+      'Feb':'febrero',
+      'Mar':'marzo',
+      'Abr':'abril',
+      'YTD':'acumulado'
+    };
+
+    if(comparePeriods.includes(map[b.innerText])){
+      b.classList.add('active');
+    }
+  });
+
+  compareMode = comparePeriods.length === 2;
+  renderPnlCompare();
+}
+
+function shortMonth(m){
+  return {
+    enero:'Ene',
+    febrero:'Feb',
+    marzo:'Mar',
+    abril:'Abr',
+    acumulado:'YTD'
+  }[m] || m;
+}
+
+function renderPnlCompare(){
+  const isSingle = comparePeriods.length === 1;
+  if(isSingle){
+    // ── SINGLE PERIOD: full expandable P&L ──────────────────────────────────
+    pnlPeriod = comparePeriods[0];
+    renderPNL();
+    // Remove hint if visible
+    const hint=document.getElementById('pnl-compare-hint');
+    if(hint) hint.remove();
+    return;
+  }
+
+  // ── COMPARE MODE: summary only + Δ ─────────────────────────────────────────
+  const periods = comparePeriods.map(k=>({key:k, data:getPD(k)}));
+  const head = document.getElementById('pnl-head');
+  const body = document.getElementById('pnl-body');
+  if(!head||!body) return;
+
+  head.innerHTML = `<tr>
+    <th>Concepto</th>
+    ${periods.map(p=>`<th class="col-ventas">${shortMonth(p.key)}</th>`).join('')}
+    <th class="col-margen">Δ €</th>
+    <th class="col-margen">Δ %</th>
+  </tr>`;
+
+  function deltaEur(a,b){ return a-b; }
+  function deltaPct(a,b){ if(!b) return '—'; const d=(a-b)/Math.abs(b)*100; return (d>=0?'+':'')+d.toFixed(1)+'%'; }
+  function dCls(v,inv){ return v===0?'v-muted':(v>0?(inv?'v-neg':'v-pos'):(inv?'v-pos':'v-neg')); }
+
+  const logMap={enero:859,febrero:774,marzo:879,abril:911,acumulado:3423};
+  const ssMap={enero:7500,febrero:7772.70,marzo:7772.70,abril:7781.82,acumulado:30827.22};
+  const enisaMap={enero:0,febrero:0,marzo:1374.82,abril:0,acumulado:1374.82};
+  const pkgMap={enero:1632.92,febrero:2196.98,marzo:2030.20,abril:2840.19,acumulado:8700.29};
+  const otrosMap={enero:5654.06,febrero:6861.75,marzo:8034.03,abril:8566.53,acumulado:29116.37};
+
+  function getMetric(pd, key){
+    const d=pd.data, k=pd.key;
+    if(key==='sc') return -(d.sueldos+d.cargas);
+    if(key==='alq') return -3500;
+    if(key==='log') return -(logMap[k]||0);
+    if(key==='pkg') return -(pkgMap[k]||0);
+    if(key==='otros') return -(otrosMap[k]||0);
+    if(key==='ss') return -(ssMap[k]||0);
+    if(key==='enisa') return -(enisaMap[k]||0);
+    return d[key]||0;
+  }
+
+  const rows = [
+    {label:'Ventas',          key:'ventas_total',  inv:false, cls:'v-acc',    st:true},
+    {label:'CMV',             key:'cmv_total',     inv:true,  cls:'v-neg'},
+    {label:'Margen bruto',    key:'mb_total',      inv:false, cls:'v-pos',    st:true},
+    {label:'Comisiones',      key:'comis_total',   inv:true,  cls:'v-orange'},
+    {label:'Sueldos + Cargas',key:'sc',            inv:true,  cls:'v-neg'},
+    {label:'Alquiler',        key:'alq',           inv:true,  cls:'v-neg'},
+    {label:'Logística',       key:'log',           inv:true,  cls:'v-neg'},
+    {label:'Packaging',       key:'pkg',           inv:true,  cls:'v-neg'},
+    {label:'Otros gastos',    key:'otros',         inv:true,  cls:'v-neg'},
+    {label:'Sueldos socios',  key:'ss',            inv:true,  cls:'v-neg'},
+    {label:'Resultado neto',  key:'resultado',     inv:false, cls:'v-yellow', total:true},
+  ];
+
+  let bodyHTML = '';
+  rows.forEach(r=>{
+    const vals = periods.map(pd=>getMetric(pd,r.key));
+    const dEur = vals.length===2 ? deltaEur(vals[1],vals[0]) : null;
+    const dPct = vals.length===2 ? deltaPct(vals[1],vals[0]) : null;
+    const rowCls = r.total?'r-total':r.st?'r-subtotal':'r-brand';
+
+    bodyHTML += `<tr class="${rowCls}" style="cursor:default">
+      <td><span class="lname">${r.label}</span></td>
+      ${vals.map((v,i)=>`<td class="${r.cls}">${fmt(v)}</td>`).join('')}
+      ${dEur!==null ? `<td class="${dCls(dEur,r.inv)}">${fmt(dEur)}</td>` : '<td>—</td>'}
+      ${dPct!==null ? `<td class="${dCls(dEur,r.inv)}" style="font-size:11px">${dPct}</td>` : '<td>—</td>'}
+    </tr>`;
+  });
+
+  // Acumulado YTD
+  const acumVals = periods.map(pd=>{
+    const meses=['enero','febrero','marzo','abril'];
+    const idx=meses.indexOf(pd.key);
+    if(idx===-1) return pd.data.resultado;
+    return meses.slice(0,idx+1).reduce((s,m)=>s+DATA[m].resultado,0);
+  });
+  const acumD = acumVals.length===2 ? deltaEur(acumVals[1],acumVals[0]) : null;
+  bodyHTML += `<tr class="r-canal" style="background:var(--surface2)">
+    <td><span class="lname" style="font-size:11px;color:var(--text3)">Acumulado YTD</span></td>
+    ${acumVals.map(v=>`<td style="font-size:11px;color:var(--text3);font-family:var(--mono)">${fmt(v)}</td>`).join('')}
+    ${acumD!==null?`<td class="${acumD>=0?'v-pos':'v-neg'}" style="font-size:11px">${fmt(acumD)}</td>`:'<td></td>'}
+    <td></td>
+  </tr>`;
+
+  body.innerHTML = bodyHTML;
+
+  // Hint below table
+  const hint = document.getElementById('pnl-compare-hint');
+  if(!hint){
+    const h = document.createElement('div');
+    h.id='pnl-compare-hint';
+    h.style.cssText='padding:8px 20px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);flex-shrink:0';
+    h.textContent='💡 Para ver el detalle expandible seleccioná un solo período';
+    document.getElementById('panel-pnl').appendChild(h);
+  }
+}
+
+
+
+function renderAnalisis(){
+  const el=document.getElementById('analisis-scroll');
+  if(!el){ setTimeout(renderAnalisis, 100); return; }
+  const mar=DATA.marzo,abr=DATA.abril;
+  const dVentas=abr.ventas_total-mar.ventas_total;
+  const dMB=abr.mb_total-mar.mb_total;
+  const dNeto=abr.resultado-mar.resultado;
+  const suelVar=[
+    {u:'Boxlunch',v:785.27,m:'Cambio Analia → Araceli + aumento horas y sueldo Caro'},
+    {u:'Scopely camareras',v:673.29,m:'Pasamos de 3 días a la semana a 4'},
+    {u:'Scopely producción',v:3238.57,m:'Ousmane 20hs/sem + Lau logística + Julieta a 40h'},
+    {u:'Catering',v:243.88,m:'Incremento actividad'},
+    {u:'Mara (Admin)',v:-412.78,m:'Ajuste positivo'},
+  ];
+  const totalSuelV=suelVar.reduce((s,x)=>s+x.v,0);
+
+  el.innerHTML=`
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 20px;overflow-y:auto;height:100%">
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">Variación Abril vs Marzo</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="background:var(--surface2);border-radius:6px;padding:10px 12px">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Ventas</div>
+            <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--green)">+${fmt(dVentas)}</div>
+            <div style="font-size:10px;color:var(--text3)">+4,2%</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:10px 12px">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Margen bruto</div>
+            <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--green)">+${fmt(dMB)}</div>
+            <div style="font-size:10px;color:var(--text3)">${(dMB/mar.mb_total*100).toFixed(1)}%</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:10px 12px">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Resultado neto</div>
+            <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:var(--red)">${fmt(dNeto)}</div>
+            <div style="font-size:10px;color:var(--red)">−18,7% vs marzo</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">Desglose variación de ventas (+€6.125)</div>
+        ${[
+          {l:'Scopely comedor',v:5700,n:'Mayor volumen pedidos'},
+          {l:'Scopely camareras',v:856,n:'Más días de servicio (3→4/sem)'},
+          {l:'Boxlunch (todas marcas)',v:1800,n:'Crecimiento orgánico'},
+          {l:'Catering (Nico)',v:-2200,n:'Reducción eventos'},
+          {l:'Otros canales',v:-231,n:''},
+        ].map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div><span style="font-size:12px;color:var(--text)">${x.l}</span>${x.n?`<span style="font-size:10px;color:var(--text3);margin-left:6px">${x.n}</span>`:''}</div>
+          <span style="font-size:13px;font-family:var(--mono);font-weight:700;color:${x.v>=0?'var(--green)':'var(--red)'}">${x.v>=0?'+':''}${fmt(x.v)}</span>
+        </div>`).join('')}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:16px">
+        <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-light);margin-bottom:10px">Análisis: contribución marginal</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px">
+          <strong style="color:var(--text)">1€ adicional de venta en Kombo/Scopely</strong> aporta <strong style="color:var(--green)">~0,50€ neto</strong><br>
+          (30% CMV + 20% comisión = 50% margen de contribución)
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+          <div style="background:var(--surface2);border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Venta adicional Scopely</div>
+            <div style="font-size:14px;font-family:var(--mono);font-weight:700;color:var(--accent-light)">+€5.700</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Neto esperado</div>
+            <div style="font-size:14px;font-family:var(--mono);font-weight:700;color:var(--green)">+€2.850</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Neto real</div>
+            <div style="font-size:14px;font-family:var(--mono);font-weight:700;color:var(--red)">${fmt(dNeto)}</div>
+          </div>
+        </div>
+        <div style="background:var(--red-dim);border:1px solid var(--red);border-radius:6px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--red);font-weight:700;margin-bottom:4px">⚠ Desvío: −€5.540 respecto al neto esperado</div>
+          <div style="font-size:11px;color:var(--text2)">
+            Esperado = €14.410 (marzo) + €2.850 = <strong style="color:var(--text)">€17.260</strong><br>
+            Real = <strong style="color:var(--red)">€11.720</strong> → diferencia <strong style="color:var(--red)">−€5.540</strong>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">Variación sueldos Abril vs Marzo — Total +€4.528</div>
+        ${suelVar.map(s=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">${s.u}</span>
+            <span style="font-size:14px;font-family:var(--mono);font-weight:700;color:${s.v>=0?'var(--red)':'var(--green)'}">${s.v>=0?'+':''}${fmt(s.v)}</span>
+          </div>
+          <span style="font-size:10px;color:var(--text3)">${s.m}</span>
+        </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:2px">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">Total variación sueldos</span>
+          <span style="font-size:14px;font-family:var(--mono);font-weight:700;color:var(--red)">+${fmt(totalSuelV)}</span>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">Otros factores de desvío</div>
+        ${[
+          {l:'Autónomo socios',v:300,n:'Mauricio +€300 adicionales'},
+          {l:'Packaging',v:810,n:'+€810 vs marzo'},
+          {l:'Insumos cocina',v:744,n:'Compras adicionales cocina'},
+          {l:'Total otros',v:1854,n:'',bold:true},
+        ].map(x=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div><span style="font-size:${x.bold?'13':'12'}px;font-weight:${x.bold?'700':'400'};color:${x.bold?'var(--text)':'var(--text2)'}">${x.l}</span>${x.n&&!x.bold?`<span style="font-size:10px;color:var(--text3);margin-left:6px">${x.n}</span>`:''}</div>
+          <span style="font-size:${x.bold?'14':'13'}px;font-family:var(--mono);font-weight:700;color:var(--red)">+${fmt(x.v)}</span>
+        </div>`).join('')}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:10px;padding:16px;flex:1">
+        <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px">Conclusión ejecutiva</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          Abril fue un mes de <strong style="color:var(--text)">crecimiento en ventas</strong> (+4,2%) pero de <strong style="color:var(--red)">caída en rentabilidad</strong> (−18,7% neto).<br><br>
+          El <strong style="color:var(--text)">desvío de €5.540</strong> vs lo esperado se explica en:<br>
+          &bull; <strong style="color:var(--red)">€4.528</strong> de aumento de sueldos operativos<br>
+          &bull; <strong style="color:var(--red)">€1.854</strong> de otros costos adicionales<br><br>
+          <strong style="color:var(--yellow)">Acción clave:</strong> los nuevos sueldos reflejan una estructura pensada para mayor volumen. Si el crecimiento de Scopely se mantiene en mayo/junio, el margen debería recuperarse.
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+
+
+function toggleMarcasPeriod(period, btn){
+  // Add/remove from comparePeriods
+  if(comparePeriods.includes(period)){
+    if(comparePeriods.length > 1) comparePeriods = comparePeriods.filter(p=>p!==period);
+  } else {
+    if(comparePeriods.length >= 2) comparePeriods.shift();
+    comparePeriods.push(period);
+  }
+  compareMode = comparePeriods.length === 2;
+  marcasPeriod = comparePeriods[comparePeriods.length-1];
+  // Update tab highlights
+  const map={Ene:'enero',Feb:'febrero',Mar:'marzo',Abr:'abril',YTD:'acumulado'};
+  document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>{
+    b.classList.toggle('active', comparePeriods.includes(map[b.innerText]));
+  });
+  renderMarcas();
+}
+
+function showPanel(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='pnl')renderPnlCompare();
+  if(id==='marcas'){compareMode=comparePeriods.length===2;renderMarcas();}
+  if(id==='sueldos')renderSueldos();
+  if(id==='rvf')renderRvf();
+  if(id==='flujo')renderFlujo();
+  if(id==='analisis')renderAnalisis();
+}
+
+// ── OVERVIEW ─────────────────────────────────────────────────────────────────
+function setOvPeriod(p,btn){
+  ovPeriod=p;
+  document.querySelectorAll('#ov-tabs .ptab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchData().then(() => { renderOverview(); renderPnlCompare(); });
+renderAnalisis();
+}
+
+function renderOverview(){
+  const d=getPD(ovPeriod);
+  const prev=ovPeriod==='acumulado'?null:getPrev(ovPeriod);
+  const lbl={enero:'Enero 2026',febrero:'Febrero 2026',marzo:'Marzo 2026',abril:'Abril 2026',acumulado:'Ene–Abr 2026'}[ovPeriod];
+  const vt=d.ventas_total,mb=d.mb_total,eb=d.ebitda,res=d.resultado,ct=d.comis_total;
+  const ss={'enero':7500,'febrero':7772.70,'marzo':7772.70,'abril':7781.82}[ovPeriod]||(ovPeriod==='acumulado'?30827.22:0);
+  const pkg=d.packaging||0;
+  const otros=d.otros_g||0;
+  function badge(curr,prv){if(!prv||prv===0)return'';const dv=(curr-prv)/Math.abs(prv)*100;return`<span class="${dv>=0?'up':'dn'}">${dv>=0?'↑':'↓'} ${Math.abs(dv).toFixed(1)}% vs ant.</span>`;}
+  function pctBadge(curr,prv,lbl){if(!prv)return`<span class="neu">${lbl}</span>`;const dc=curr-prv;return`<span class="${dc>=0?'up':'dn'}">${dc>=0?'+':''}${dc.toFixed(1)}pp · </span><span class="neu">${lbl}</span>`;}
+  const mb_pct=vt?mb/vt*100:0;
+  const prev_mb_pct=prev&&prev.ventas_total?prev.mb_total/prev.ventas_total*100:null;
+  const ins={abril:[{ico:'↑',col:'var(--green)',txt:'Ventas crecen <strong>+4,2%</strong> en abril (€152.069). Scopely lidera con €93.896.'},{ico:'↓',col:'var(--red)',txt:'EBITDA cae <strong>-11%</strong> pese a más ventas. Sueldos +€4.528 (+11,2%).'},{ico:'!',col:'var(--orange)',txt:'CMV sube a <strong>31,97%</strong> (+0,6pp vs marzo). Revisar albaranes Haddock.'},{ico:'→',col:'var(--accent-light)',txt:'Resultado neto acumulado YTD: <strong>€25.121</strong>. Marzo fue el mejor mes.'}],marzo:[{ico:'↑',col:'var(--green)',txt:'Ventas baten forecast: <strong>€145.944 vs €133.637</strong> (+9,2%).'},{ico:'↑',col:'var(--green)',txt:'Mejor EBITDA del trimestre: <strong>€21.932</strong> (15,0% sobre ventas).'},{ico:'!',col:'var(--orange)',txt:'Sueldos operativos +15,4% vs febrero. Incorporación personal Scopely.'},{ico:'→',col:'var(--accent-light)',txt:'Catering crece a <strong>€15.063</strong> (+69% vs febrero).'}],febrero:[{ico:'→',col:'var(--accent-light)',txt:'Primer mes positivo: resultado neto <strong>€4.412</strong>.'},{ico:'↑',col:'var(--green)',txt:'MB% mejora a <strong>72,1%</strong> (+2,7pp vs enero).'},{ico:'!',col:'var(--orange)',txt:'CMV pagado €25.197 — se saldan facturas pendientes de enero.'},{ico:'→',col:'var(--accent-light)',txt:'Scopely <strong>62,7%</strong> de ventas. Catering crece a €8.905.'}],enero:[{ico:'→',col:'var(--accent-light)',txt:'Mes de arranque. Ventas <strong>€99.194</strong> en línea con forecast.'},{ico:'↓',col:'var(--red)',txt:'Resultado neto negativo: <strong>-€3.861</strong>.'},{ico:'!',col:'var(--orange)',txt:'CMV al 30,6%. ENISA (€99.500) sostiene la caja.'},{ico:'→',col:'var(--accent-light)',txt:'Scopely <strong>60,7%</strong> de ventas. Ancla del modelo de negocio.'}],acumulado:[{ico:'↑',col:'var(--green)',txt:'Ventas acumuladas <strong>€512.943</strong>. Crecimiento sostenido mes a mes.'},{ico:'↑',col:'var(--green)',txt:'Margen bruto promedio <strong>70,9%</strong>. Ratio sólido y estable.'},{ico:'!',col:'var(--orange)',txt:'Comisiones Kombo+Fudeat <strong>€96.453</strong> (18,8% de ventas).'},{ico:'→',col:'var(--accent-light)',txt:'Resultado positivo desde febrero. Enero fue el único mes negativo.'}]}[ovPeriod]||[];
+  document.getElementById('ov-scroll').innerHTML=`
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--c:var(--accent)"><div class="kl">Ventas ${lbl}</div><div class="kv" style="color:var(--accent-light)">${fmt(vt)}</div><div class="ks">${prev?badge(vt,prev.ventas_total):'<span class="neu">primer período</span>'}</div></div>
+    <div class="kpi-card" style="--c:var(--green)"><div class="kl">Margen bruto</div><div class="kv" style="color:var(--green)">${fmt(mb)}</div><div class="ks">${prev?pctBadge(mb_pct,prev_mb_pct,p(mb,vt)+' sobre ventas'):'<span class="neu">'+p(mb,vt)+' sobre ventas</span>'}</div></div>
+    <div class="kpi-card" style="--c:var(--orange)"><div class="kl">EBITDA</div><div class="kv" style="color:var(--orange)">${fmt(eb)}</div><div class="ks">${prev?badge(eb,prev.ebitda):'<span class="neu">primer período</span>'} <span class="neu">${p(eb,vt)} s/ventas</span></div></div>
+    <div class="kpi-card" style="--c:${res>=0?'var(--yellow)':'var(--red)'}"><div class="kl">Resultado neto</div><div class="kv" style="color:${res>=0?'var(--yellow)':'var(--red)'}">${fmt(res)}</div><div class="ks">${prev?badge(res,prev.resultado):'<span class="neu">primer período</span>'} <span class="neu">${p(res,vt)} s/ventas</span></div></div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card"><div class="cht">Evolución mensual — Ventas, Margen bruto y EBITDA</div><div class="chart-canvas-wrap"><canvas id="ov-chart"></canvas></div></div>
+    <div class="breakdown-card"><div class="cht">Ventas por marca</div>${d.marcas.filter(m=>m.v>0).sort((a,b)=>b.v-a.v).map(m=>{const color=(MARCAS_META[m.n]||{color:'#666'}).color;const pv=vt?Math.round(m.v/vt*1000)/10:0;const bW=Math.round(m.v/d.marcas.reduce((s,x)=>Math.max(s,x.v),1)*100);return`<div class="bk-row"><div class="bk-dot" style="background:${color}"></div><div class="bk-name">${m.n}</div><div class="bk-bar-track"><div class="bk-bar-fill" style="width:${bW}%;background:${color}"></div></div><div class="bk-pct">${pv}%</div><div class="bk-val">${fmt(m.v)}</div></div>`;}).join('')}</div>
+  </div>
+  <div class="bottom-row">
+    <div class="insights-card"><div class="in-title">Insights del período</div>${ins.map(i=>`<div class="in-item"><span class="in-ico" style="color:${i.col}">${i.ico}</span><span class="in-text">${i.txt}</span></div>`).join('')}</div>
+    <div class="pnl-mini-card">
+      <div class="pm-title">P&L resumen — ${lbl}</div>
+      <div class="pm-row"><span class="pl">Ventas comida</span><span class="pv" style="color:var(--accent-light)">${fmt(d.ventas_comida||vt)} <span style="font-size:10px;color:var(--text3)">${p(d.ventas_comida||vt,vt)}</span></span></div>
+      <div class="pm-row"><span class="pl">Camareras</span><span class="pv" style="color:var(--text2)">${fmt(d.camareras||0)} <span style="font-size:10px;color:var(--text3)">${p(d.camareras||0,vt)}</span></span></div>
+      <div class="pm-row" style="border-bottom:1px solid var(--border2)"><span class="pl" style="font-weight:700;color:var(--text)">Total ventas</span><span class="pv" style="color:var(--accent-light)">${fmt(vt)}</span></div>
+      <div class="pm-row"><span class="pl">CMV</span><span class="pv" style="color:var(--red)">${fmt(-d.cmv_total)} <span style="font-size:10px;color:var(--text3)">${p(d.cmv_total,vt)}</span></span></div>
+      <div class="pm-row sub"><span class="pl">Margen bruto</span><span class="pv" style="color:var(--green)">${fmt(mb)} <span style="font-size:10px;color:var(--text3)">${p(mb,vt)}</span></span></div>
+      <div class="pm-row"><span class="pl">Kombo / comisiones</span><span class="pv" style="color:var(--orange)">${fmt(-ct)} <span style="font-size:10px;color:var(--text3)">${p(ct,vt)}</span></span></div>
+      <div class="pm-row"><span class="pl">Sueldos + Cargas</span><span class="pv" style="color:var(--red)">${fmt(-(d.sueldos+d.cargas))} <span style="font-size:10px;color:var(--text3)">${p(d.sueldos+d.cargas,vt)}</span></span></div>
+      <div class="pm-row"><span class="pl">Alquiler</span><span class="pv" style="color:var(--red)">−€1.600</span></div>
+      <div class="pm-row"><span class="pl">Alquiler licencia</span><span class="pv" style="color:var(--red)">−€1.900</span></div>
+      <div class="pm-row"><span class="pl">Sueldos socios</span><span class="pv" style="color:var(--red)">${fmt(-ss)} <span style="font-size:10px;color:var(--text3)">${p(ss,vt)}</span></span></div>
+      <div class="pm-row"><span class="pl">Packaging</span><span class="pv" style="color:var(--red)">${fmt(-pkg)} <span style="font-size:10px;color:var(--text3)">${p(pkg,vt)}</span></span></div>
+      <div class="pm-row"><span class="pl">Otros gastos</span><span class="pv" style="color:var(--red)">${fmt(-otros)} <span style="font-size:10px;color:var(--text3)">${p(otros,vt)}</span></span></div>
+      <div class="pm-row tot"><span class="pl">Resultado neto</span><span class="pv">${fmt(res)}</span></div>
+    </div>
+  </div>`;
+  const ctx=document.getElementById('ov-chart');if(!ctx)return;if(ovChart){ovChart.destroy();ovChart=null;}
+  const labels=['Enero','Febrero','Marzo','Abril'];
+  const ventas=MESES.map(m=>DATA[m].ventas_total);const margen=MESES.map(m=>DATA[m].mb_total);const ebitda=MESES.map(m=>DATA[m].ebitda);const forecast=MESES.map(m=>DATA[m].forecast_v);
+  ovChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Ventas',data:ventas,backgroundColor:'rgba(99,102,241,0.7)',borderRadius:3,order:2},{label:'Margen bruto',data:margen,backgroundColor:'rgba(34,211,165,0.7)',borderRadius:3,order:2},{label:'EBITDA',data:ebitda,backgroundColor:'rgba(251,146,60,0.8)',borderRadius:3,order:2},{label:'Forecast',data:forecast,type:'line',borderColor:'rgba(252,211,77,0.6)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'rgba(252,211,77,0.6)',order:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#50505e',font:{size:10,family:'Space Mono'},boxWidth:10,padding:12}},tooltip:{backgroundColor:'#18181c',borderColor:'#32323c',borderWidth:1,titleColor:'#f0f0f4',bodyColor:'#9090a8',callbacks:{label:ctx=>`${ctx.dataset.label}: €${Math.round(ctx.raw).toLocaleString('es-ES')}`}}},scales:{x:{grid:{color:'rgba(38,38,46,0.5)'},ticks:{color:'#50505e',font:{size:10,family:'Space Mono'}}},y:{grid:{color:'rgba(38,38,46,0.5)'},ticks:{color:'#50505e',font:{size:9,family:'Space Mono'},callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+}
+
+// ── P&L ──────────────────────────────────────────────────────────────────────
+function setPnlPeriod(p,btn){pnlPeriod=p;document.querySelectorAll('#pnl-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderPNL();}
+function toggleCol(btn){const m=btn.dataset.m;visibleCols[m]=!visibleCols[m];btn.classList.toggle('on',visibleCols[m]);renderPNL();}
+function toggleAllBrands(){allExp=!allExp;const d=getPD(pnlPeriod);d.marcas.forEach(m=>expanded[m.n]=allExp);document.querySelector('.expand-btn').textContent=allExp?'Colapsar todo':'Expandir todo';renderPNL();}
+function toggleBrand(name){expanded[name]=!expanded[name];renderPNL();}
+
+function renderPNL(){
+  const d=getPD(pnlPeriod);
+  const vc=visibleCols;
+  const vt=d.ventas_total;
+
+  let head='<tr><th>Concepto</th>';
+  if(vc.ventas)head+='<th class="col-ventas">Importe</th>';
+  if(vc.pct)head+='<th>% s/ventas</th>';
+  if(vc.forecast)head+='<th class="col-forecast">Forecast</th><th class="col-forecast">Δ FC</th>';
+  head+='</tr>';
+  document.getElementById('pnl-head').innerHTML=head;
+
+  function cols(v,cls,pctBase){
+    let c='';
+    if(vc.ventas) c+=`<td class="${cls}">${fmt(v)}</td>`;
+    if(vc.pct)    c+=`<td class="v-muted">${pctBase?p(Math.abs(v),pctBase):'—'}</td>`;
+    if(vc.forecast) c+=`<td class="v-muted">—</td><td class="v-muted">—</td>`;
+    return c;
+  }
+  function fcols(actual,fcVal){
+    let c='';
+    const cls=actual<0?'v-neg':'v-hi';
+    if(vc.ventas) c+=`<td class="${cls}">${fmt(actual)}</td>`;
+    if(vc.pct)    c+=`<td class="v-muted">${p(Math.abs(actual),vt)}</td>`;
+    if(vc.forecast&&fcVal){const diff=actual-fcVal;c+=`<td class="v-muted">${fmt(fcVal)}</td><td class="${diff>=0?'fc-good':'fc-bad'}">${diff>=0?'+':''}${fmt(diff)}</td>`;}
+    else if(vc.forecast) c+=`<td class="v-muted">—</td><td class="v-muted">—</td>`;
+    return c;
+  }
+  function brandRow(id,label,v,color){
+    const isExp=expanded[id];
+    return `<tr class="r-brand" onclick="toggleBrand('${id}')">
+      <td><div class="row-label"><span class="chev ${isExp?'open':''}">›</span>
+      ${color?`<span class="brand-dot" style="background:${color}"></span>`:''}
+      <span class="lname">${label}</span></div></td>${cols(v,v<0?'v-neg':'v-acc',vt)}</tr>`;
+  }
+  function canalRow(nombre,v,cls,indent){
+    const px=indent||14;
+    return `<tr class="r-canal"><td><div class="row-label">
+      <span style="width:${px}px;display:inline-block"></span>
+      <span class="canal-arrow">↳</span>
+      <span class="lname" style="margin-left:5px">${nombre}</span>
+    </div></td>${cols(v,cls||'',vt)}</tr>`;
+  }
+  function subRow(nombre,v){
+    return `<tr class="r-canal" style="background:var(--bg)"><td><div class="row-label">
+      <span style="width:28px;display:inline-block"></span>
+      <span class="canal-arrow" style="font-size:10px">↳</span>
+      <span class="lname" style="margin-left:5px;font-size:11px;color:var(--text3)">${nombre}</span>
+    </div></td>${cols(v,'v-muted',null)}</tr>`;
+  }
+  function subtotalRow(label,v,cls){
+    let c='';
+    if(vc.ventas) c+=`<td class="${cls||'v-hi'}">${fmt(v)}</td>`;
+    if(vc.pct)    c+=`<td class="v-muted">${p(Math.abs(v),vt)}</td>`;
+    if(vc.forecast) c+=`<td class="v-muted">—</td><td class="v-muted">—</td>`;
+    return `<tr class="r-subtotal"><td><span class="lname">${label}</span></td>${c}</tr>`;
+  }
+  function simpleRow(label,v,cls){
+    let c='';
+    if(vc.ventas) c+=`<td class="${cls||'v-neg'}">${fmt(v)}</td>`;
+    if(vc.pct)    c+=`<td class="v-muted">${p(Math.abs(v),vt)}</td>`;
+    if(vc.forecast) c+=`<td class="v-muted">—</td><td class="v-muted">—</td>`;
+    return `<tr class="r-brand" style="cursor:default"><td><span class="lname">${label}</span></td>${c}</tr>`;
+  }
+  function spacer(){ return `<tr class="r-spacer"><td colspan="20"></td></tr>`; }
+
+  // ── Datos por período ──────────────────────────────────────────────────────
+  const pkgData={enero:1632.92,febrero:2196.98,marzo:2030.20,abril:2840.19,acumulado:8700.29};
+  const logData={enero:859,febrero:774,marzo:879,abril:911,acumulado:3423};
+  const otrosData={enero:5654.06,febrero:6861.75,marzo:8034.03,abril:8566.53,acumulado:29116.37};
+  const enisaData={enero:0,febrero:0,marzo:1374.82,abril:0,acumulado:1374.82};
+  const ss={enero:7500,febrero:7772.70,marzo:7772.70,abril:7781.82,acumulado:30827.22};
+
+  const pkg=pkgData[pnlPeriod]||0;
+  const log=logData[pnlPeriod]||0;
+  const otros=otrosData[pnlPeriod]||0;
+  const enisa=enisaData[pnlPeriod]||0;
+  const suelSocios=ss[pnlPeriod]||0;
+  const totalSC=d.sueldos+d.cargas;
+
+  // Otros gastos detalle por período
+  const otrosItems={
+    enero:[['Community',320],['Securitas',50.22],['Seguros Roger',558.87],['Gestoría',427],['Diseño pag web',19.21],['Imprenta',291.06],['Parking',135.54],['Asesoría Sanidad',250],['Gastos financieros',256.08],['JobToday',84.69],['Publicidad/Google',30.70],['Autónomo socios',751.06],['Holded',59],['Comisión OCW',21.27],['Canva',23.99],['Heroku',10.69],['Edenred',32.06],['Gastos varios',228.79],['Google Figa',34],['Haddock',160],['Caixa Rental',485.77],['Aquassistem',55.90],['Gas Neoelectra',151.20],['Iberdrola',841.19],['Tarjeta café',52.60],['Too Good To Go',68.20],['Mantenimiento',254.97]],
+    febrero:[['Community',400],['Securitas',50.22],['Seguros Roger',575.31],['Gestoría',503],['Imprenta',175.77],['Parking',190.44],['Asesoría Sanidad',250],['Gastos financieros',40.22],['JobToday',117.48],['Autónomo socios',752.50],['Insumos cocina',190.86],['Holded',59],['Comisión OCW',67.50],['Canva',19.83],['Heroku',10.69],['Claude',18],['Edenred',38.79],['Gastos varios',190.87],['Google Figa',36.91],['Compras Amazon',65],['Wedding net',292.09],['Haddock',160],['Caixa Rental',436.81],['Aquassistem',73.90],['Gasto auto/nafta',60],['Gas Neoelectra',295.16],['Aigues',169],['Iberdrola',841.19],['Orange',80.91],['Tarjeta café',57.92],['Mantenimiento',292.38],['Abogados',350]],
+    marzo:[['Community',400],['Securitas',50.22],['Seguros Roger',575.31],['Gestoría',492],['Imprenta',386.11],['Parking',191.74],['Asesoría Sanidad',250],['Gastos financieros',116.30],['JobToday',99.99],['Publicidad/Google',40.80],['Autónomo socios',752.50],['Insumos cocina',159.18],['Holded',97.47],['Comisión OCW',176.81],['Canva',19.83],['Heroku',10.82],['Claude',18],['Edenred',59.50],['Gastos varios',335.56],['Comisión Stripe',240.26],['Wedding net',292.13],['Haddock',160],['Allianz',71.08],['Caixa Rental',507.51],['Aquassistem',64.80],['Gasto auto/nafta',135.34],['Gas Neoelectra',243.93],['Iberdrola',494.10],['Orange',126.86],['Tarjeta café',229.05],['Mantenimiento',1236.83]],
+    abril:[['Community',400],['Securitas',41.32],['Seguros Roger',631],['Gestoría',471],['Imprenta',46.28],['Control plagas',280],['Parking',191.74],['Asesoría Sanidad',250],['Autónomo socios',1065.78],['Gastos financieros',72.21],['JobToday',100],['Apple',26],['Insumos cocina',903.29],['Holded',97.80],['Heroku',11],['Claude',18],['Edenred',30.74],['Gastos varios',788.08],['Google Figa',40.80],['Gastos catering',245.57],['Compras Amazon',39.99],['Haddock',160],['Caixa Rental',507.51],['Aquassistem',109.30],['Aigues',468.46],['Iberdrola',814.63],['Orange',96.53],['To Good To Go',95.70],['Mantenimiento',563.80]],
+    acumulado:[['Community',1520],['Securitas',192.76],['Seguros Roger',2340.49],['Gestoría',1895],['Imprenta',899.22],['Parking',709.46],['Asesoría Sanidad',1000],['Gastos financieros',484.81],['JobToday',402.16],['Autónomo socios',3321.34],['Insumos cocina',350.04],['Holded',313.27],['Comisión OCW',265.58],['Canva',63.61],['Heroku',43.20],['Claude',54],['Edenred',162.09],['Gastos varios',1543.30],['Google Figa',111.71],['Haddock',640],['Caixa Rental',1937.60],['Aquassistem',303.90],['Iberdrola',2991.11],['Mantenimiento',2348.00],['Varios',2780.62]]
+  };
+
+  // Sueldos por unidad
+  const scData={
+    enero:[['Figa',-(4616.71+801.64)],['Deligreens',-(2303.52+399.98)],['Mamacuina',-(189.58+32.92)],['PokeClub',-(482.00+83.69)],['Pomodoro',-(830.94+144.28)],['Scopely producción',-(12576.69+3478.43)],['Scopely camareras',-(2203.95+803.28)],['Admin (Mara)',-(1440+462.96)],['Catering',-1726.51]],
+    febrero:[['Figa',-(4731.29+519.34)],['Deligreens',-(2508.22+275.32)],['Mamacuina',-(226.51+24.86)],['PokeClub',-(505.74+55.51)],['Pomodoro',-(970.63+106.54)],['Scopely producción',-(13608.91+3833.58)],['Scopely camareras',-(2898.99+966.80)],['Admin (Mara)',-(1440+462.96)],['Catering',-3033.31]],
+    marzo:[['Figa',-(5708.28+324.46)],['Deligreens',-(2148.52+122.12)],['Mamacuina',-(229.70+13.06)],['PokeClub',-(941.10+53.49)],['Pomodoro',-(652.25+37.07)],['Scopely producción',-(15478.61+4584.75)],['Scopely camareras',-(4482.09+794.43)],['Admin (Mara)',-(1866.97+600.22)],['Catering',-(3746.70+60.02)],['Yuki',-798]],
+    abril:[['Boxlunch',-(10673.89+927.67+750)],['Scopely producción',-(14496.42+4673.53)],['Scopely camareras',-(4770.08+1179.73)],['Admin (Mara)',-(2154.61+499.80)],['Catering',-3743.88]],
+    acumulado:[['Figa/Boxlunch',-(37718.88+3922)],['Deligreens',-(9661.26+797.30)],['Mamacuina',-(645.79+73.84)],['PokeClub',-(2410.84+271.31)],['Pomodoro',-(3454.76+400.17)],['Scopely producción',-(56160.63+16570.29)],['Scopely camareras',-(14355.11+3743.24)],['Admin (Mara)',-(6901.55+2025.94)],['Catering',-(12250.52+120.04)],['Yuki',-798]]
+  };
+
+  let body='';
+
+  // 1. VENTAS
+  body+=`<tr class="r-section"><td colspan="20">Ventas</td></tr>`;
+  d.marcas.filter(m=>m.v>0).forEach(m=>{
+    const color=(MARCAS_META[m.n]||{color:'#666'}).color;
+    const isExp=expanded[m.n];
+    body+=`<tr class="r-brand" onclick="toggleBrand('${m.n.replace(/'/g,"\\'")}')">
+      <td><div class="row-label"><span class="chev ${isExp?'open':''}">›</span>
+      <span class="brand-dot" style="background:${color}"></span>
+      <span class="lname">${m.n}</span></div></td>${cols(m.v,'v-acc',vt)}</tr>`;
+    if(isExp&&m.canales&&m.canales.length){
+      m.canales.forEach(ca=>{
+        const caKey='ca_'+m.n+'_'+ca.n;
+        const caExp=expanded[caKey];
+        const hasSub=ca.sub&&ca.sub.length>0;
+        body+=`<tr class="r-canal" ${hasSub?`onclick="toggleBrand('${caKey}')" style="cursor:pointer"`:''}>
+          <td><div class="row-label">
+            <span style="width:14px;display:inline-block"></span>
+            ${hasSub?`<span class="chev ${caExp?'open':''}" style="font-size:11px;margin-right:4px">›</span>`:'<span class="canal-arrow">↳</span>'}
+            <span class="lname" style="margin-left:5px">${ca.n}</span>
+          </div></td>${cols(ca.v,'',vt)}</tr>`;
+        if(hasSub&&caExp) ca.sub.forEach(s=>{body+=subRow(s.n,s.v);});
+      });
+    }
+  });
+  body+=subtotalRow('Total ventas',vt,'v-acc');
+  body+=spacer();
+
+  // 2. CMV
+  const cmvIsExp=expanded['_cmv'];
+  body+=`<tr class="r-brand" onclick="toggleBrand('_cmv')">
+    <td><div class="row-label"><span class="chev ${cmvIsExp?'open':''}">›</span><span class="lname">CMV</span></div></td>
+    ${cols(-d.cmv_total,'v-neg',vt)}</tr>`;
+  if(cmvIsExp){
+    d.marcas.filter(m=>m.cmv>0).forEach(m=>{
+      const color=(MARCAS_META[m.n]||{color:'#666'}).color;
+      body+=`<tr class="r-canal"><td><div class="row-label">
+        <span style="width:14px;display:inline-block"></span><span class="canal-arrow">↳</span>
+        <span class="brand-dot" style="background:${color};margin-left:5px"></span>
+        <span class="lname" style="margin-left:4px">${m.n}</span>
+      </div></td>${cols(-m.cmv,'v-neg',vt)}</tr>`;
+    });
+  }
+  body+=subtotalRow('Margen Bruto',d.mb_total,'v-pos');
+  body+=spacer();
+
+  // 3. COMISIONES
+  const comIsExp=expanded['_comis'];
+  body+=`<tr class="r-brand" onclick="toggleBrand('_comis')">
+    <td><div class="row-label"><span class="chev ${comIsExp?'open':''}">›</span><span class="lname">Comisión Kombo y Fudeat</span></div></td>
+    ${cols(-d.comis_total,'v-orange',vt)}</tr>`;
+  if(comIsExp){
+    d.marcas.filter(m=>m.comis>0).forEach(m=>{
+      const color=(MARCAS_META[m.n]||{color:'#666'}).color;
+      body+=`<tr class="r-canal"><td><div class="row-label">
+        <span style="width:14px;display:inline-block"></span><span class="canal-arrow">↳</span>
+        <span class="brand-dot" style="background:${color};margin-left:5px"></span>
+        <span class="lname" style="margin-left:4px">${m.n}</span>
+      </div></td>${cols(-m.comis,'v-orange',vt)}</tr>`;
+    });
+  }
+  body+=spacer();
+
+  // 4. SUELDOS + CARGAS
+  const scIsExp=expanded['_sc'];
+  body+=`<tr class="r-brand" onclick="toggleBrand('_sc')">
+    <td><div class="row-label"><span class="chev ${scIsExp?'open':''}">›</span><span class="lname">Sueldos + Cargas</span></div></td>
+    ${cols(-totalSC,'v-neg',vt)}</tr>`;
+  if(scIsExp){
+    (scData[pnlPeriod]||scData['abril']).forEach(([n,v])=>{
+      body+=canalRow(n,v,'v-neg');
+    });
+  }
+  body+=spacer();
+
+  // 5. ALQUILER (collapsed shows €3.500, expanded shows breakdown)
+  const alqIsExp=expanded['_alq'];
+  body+=`<tr class="r-brand" onclick="toggleBrand('_alq')">
+    <td><div class="row-label"><span class="chev ${alqIsExp?'open':''}">›</span><span class="lname">Alquiler</span></div></td>
+    ${cols(-3500,'v-neg',vt)}</tr>`;
+  if(alqIsExp){
+    body+=canalRow('Alquiler local',-1600,'v-neg');
+    body+=canalRow('Alquiler licencia',-1900,'v-neg');
+  }
+  body+=spacer();
+
+  // 6. LOGÍSTICA (Brandon) + Packaging dentro
+  const logIsExp=expanded['_log'];
+  body+=`<tr class="r-brand" onclick="toggleBrand('_log')">
+    <td><div class="row-label"><span class="chev ${logIsExp?'open':''}">›</span><span class="lname">Logística (Brandon)</span></div></td>
+    ${cols(-(log),'v-neg',vt)}</tr>`;
+  if(logIsExp){
+    body+=canalRow('Transporte repartos',-(log-0),'v-neg');
+  }
+  // Packaging — siempre visible, debajo de logística
+  body+=`<tr class="r-brand" style="cursor:default"><td><span class="lname" style="padding-left:4px">Packaging</span></td>${cols(-pkg,'v-neg',vt)}</tr>`;
+  body+=spacer();
+
+  // 7. OTROS GASTOS (expandible con todos los ítems)
+  const otrosIsExp=expanded['_otros'];
+  body+=`<tr class="r-brand" onclick="toggleBrand('_otros')">
+    <td><div class="row-label"><span class="chev ${otrosIsExp?'open':''}">›</span><span class="lname">Otros gastos</span></div></td>
+    ${cols(-otros,'v-neg',vt)}</tr>`;
+  if(otrosIsExp){
+    (otrosItems[pnlPeriod]||otrosItems['abril']).forEach(([n,v])=>{
+      body+=canalRow(n,-v,'v-neg');
+    });
+  }
+  body+=spacer();
+
+  // 8. SUELDOS SOCIOS
+  body+=simpleRow('Sueldos socios',-suelSocios,'v-neg');
+
+  // 9. ENISA (solo si aplica)
+  if(enisa>0){
+    body+=simpleRow('ENISA',-enisa,'v-neg');
+  }
+  body+=spacer();
+
+  // RESULTADO NETO
+  const res=d.resultado;
+  const fcDiff=vc.forecast&&d.forecast_neto?fd(res,d.forecast_neto):null;
+  let resC='';
+  if(vc.ventas) resC+=`<td class="${res>=0?'v-yellow':'v-neg'}">${fmt(res)}</td>`;
+  if(vc.pct)    resC+=`<td class="v-muted">${p(Math.abs(res),vt)}</td>`;
+  if(vc.forecast) resC+=`<td class="v-muted">${fmt(d.forecast_neto||0)}</td><td class="${fcDiff&&fcDiff.startsWith('+')?'fc-good':'fc-bad'}">${fcDiff||'—'}</td>`;
+  body+=`<tr class="r-total"><td><span class="lname">Neto</span></td>${resC}</tr>`;
+
+  // ACUMULADO
+  if(pnlPeriod!=='acumulado'){
+    const meses=['enero','febrero','marzo','abril'];
+    const acum=meses.slice(0,meses.indexOf(pnlPeriod)+1).reduce((s,m)=>s+DATA[m].resultado,0);
+    let acC='';
+    if(vc.ventas) acC+=`<td class="${acum>=0?'v-muted':'v-neg'}" style="color:var(--text3);font-size:11px">${fmt(acum)}</td>`;
+    if(vc.pct) acC+=`<td></td>`;
+    if(vc.forecast) acC+=`<td></td><td></td>`;
+    body+=`<tr class="r-canal" style="background:var(--surface2)"><td><span class="lname" style="font-size:11px;color:var(--text3)">Acumulado YTD</span></td>${acC}</tr>`;
+  }
+
+document.getElementById('pnl-body').innerHTML=body;
+}
+
+// ── MARCAS ────────────────────────────────────────────────────────────────────
+function setMarcasPeriod(p,btn){marcasPeriod=p;document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMarcas();}
+function renderMarcas(){
+  const isCompare = compareMode && comparePeriods.length === 2;
+  
+  if(isCompare){
+    // ── COMPARE: two columns side by side ──────────────────────────────────
+    const [p1, p2] = comparePeriods.map(k=>({key:k, data:getPD(k)}));
+    const allNames = [...new Set([
+      ...(p1.data.marcas||[]).map(m=>m.n),
+      ...(p2.data.marcas||[]).map(m=>m.n)
+    ])].filter(n=>{
+      const m1=(p1.data.marcas||[]).find(m=>m.n===n);
+      const m2=(p2.data.marcas||[]).find(m=>m.n===n);
+      return (m1?.v||0)>0||(m2?.v||0)>0;
+    });
+
+    const maxV = Math.max(
+      ...(p1.data.marcas||[]).map(m=>m.v||0),
+      ...(p2.data.marcas||[]).map(m=>m.v||0)
+    ) || 1;
+
+    let h = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);flex:1;overflow-y:auto">`;
+    [p1,p2].forEach(pd=>{
+      const sorted = allNames.map(n=>{
+        const m=(pd.data.marcas||[]).find(x=>x.n===n)||{n,v:0,cmv:0,comis:0};
+        return m;
+      }).filter(m=>m.v>0).sort((a,b)=>b.v-a.v);
+      const vt = pd.data.ventas_total||1;
+
+      h += `<div style="background:var(--surface);padding:12px 16px 0">
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${{enero:'Enero',febrero:'Febrero',marzo:'Marzo',abril:'Abril',acumulado:'YTD'}[pd.key]||pd.key}</div>`;
+      sorted.forEach(m=>{
+        const color=(MARCAS_META[m.n]||{color:'#666'}).color;
+        const mb=m.v-(m.cmv||0);
+        const mb_pct=m.v?(mb/m.v*100).toFixed(1):0;
+        const share=(m.v/vt*100).toFixed(1);
+        const bW=Math.round(m.v/maxV*100);
+        h+=`<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block"></span>
+              <span style="font-size:12px;font-weight:700;color:var(--text)">${m.n}</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:baseline">
+              <span style="font-size:12px;font-family:var(--mono);font-weight:700;color:${color}">${fmt(m.v)}</span>
+              <span style="font-size:10px;font-family:var(--mono);color:var(--text3)">${share}%</span>
+            </div>
+          </div>
+          <div style="height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-bottom:4px">
+            <div style="width:${bW}%;height:100%;background:${color};border-radius:2px"></div>
+          </div>
+          <div style="display:flex;gap:12px;font-size:10px;font-family:var(--mono)">
+            <span style="color:var(--green)">MB ${fmt(mb)}</span>
+            <span style="color:var(--text3)">${mb_pct}%</span>
+          </div>
+          ${m.canales&&m.canales.length?`<div style="margin-top:4px">${m.canales.map(ca=>`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px"><span style="color:var(--text3)">↳ ${ca.n}</span><span style="font-family:var(--mono);color:var(--text2)">${fmt(ca.v)}</span></div>`).join('')}</div>`:''}
+        </div>`;
+      });
+      h += `</div>`;
+    });
+
+    // Δ column
+    h += `<div style="background:var(--surface);padding:12px 16px 0;grid-column:1/-1">
+      <div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Δ ${shortMonth(p1.key)} → ${shortMonth(p2.key)}</div>`;
+    allNames.forEach(n=>{
+      const m1=(p1.data.marcas||[]).find(x=>x.n===n)||{v:0};
+      const m2=(p2.data.marcas||[]).find(x=>x.n===n)||{v:0};
+      const dv=m2.v-m1.v;
+      const dpct=m1.v?((m2.v-m1.v)/Math.abs(m1.v)*100).toFixed(1):null;
+      const color=(MARCAS_META[n]||{color:'#666'}).color;
+      if(m1.v===0&&m2.v===0) return;
+      h+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0"></span>
+        <span style="font-size:12px;color:var(--text2);flex:1">${n}</span>
+        <span style="font-size:12px;font-family:var(--mono);font-weight:700;color:${dv>=0?'var(--green)':'var(--red)'}">${dv>=0?'+':''}${fmt(dv)}</span>
+        ${dpct?`<span style="font-size:10px;font-family:var(--mono);color:var(--text3);width:48px;text-align:right">${dv>=0?'+':''}${dpct}%</span>`:''}
+      </div>`;
+    });
+    h+=`</div></div>`;
+    document.getElementById('marcas-grid').innerHTML=h;
+    return;
+  }
+
+  // ── SINGLE PERIOD ──────────────────────────────────────────────────────────
+  const d=getPD(marcasPeriod);
+  const sorted=[...d.marcas].filter(m=>m.v>0).sort((a,b)=>b.v-a.v);
+  const maxV=sorted[0]?.v||1;
+  let htmlOut='';
+  sorted.forEach(m=>{
+    const color=(MARCAS_META[m.n]||{color:'#666'}).color;
+    const mb=m.v-(m.cmv||0);
+    const mb_pct=m.v?(mb/m.v*100).toFixed(1):0;
+    const share=(m.v/d.ventas_total*100).toFixed(1);
+    const barW=Math.round(m.v/maxV*100);
+    htmlOut+=`<div class="marca-card">
+      <div class="marca-head"><div class="marca-name"><span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${m.n}</div><span class="marca-share">${share}% del total</span></div>
+      <div class="marca-stats">
+        <div class="mstat"><div class="mstat-l">Ventas</div><div class="mstat-v" style="color:${color}">${fmt(m.v)}</div></div>
+        <div class="mstat"><div class="mstat-l">Margen bruto</div><div class="mstat-v" style="color:var(--green)">${fmt(mb)}</div></div>
+        <div class="mstat"><div class="mstat-l">MB%</div><div class="mstat-v" style="color:${parseFloat(mb_pct)>60?'var(--green)':parseFloat(mb_pct)>35?'var(--orange)':'var(--red)'}">${mb_pct}%</div></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${barW}%;background:${color}"></div></div>
+      ${m.canales&&m.canales.length?`<div style="margin-top:8px">${m.canales.map(ca=>`<div class="canal-mini"><span class="canal-mini-n">${ca.n}</span><span class="canal-mini-v">${fmt(ca.v)}</span></div>`).join('')}</div>`:''}
+    </div>`;
+  });
+  document.getElementById('marcas-grid').innerHTML=htmlOut;
+}
+
+
+function setSueldosPeriod(p,btn){sueldosPeriod=p;document.querySelectorAll('#sueldos-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderSueldos();}
+function toggleSueldoSection(i){sueldoExp[i]=!sueldoExp[i];renderSueldos();}
+function renderSueldos(){
+  const secs=SUELDOS[sueldosPeriod]||SUELDOS['abril'];
+  const meses=['enero','febrero','marzo','abril'];
+  const prevMes=meses[meses.indexOf(sueldosPeriod)-1];
+  const secsPrev=prevMes?SUELDOS[prevMes]:null;
+  const gTotal=secs.reduce((s,sec)=>s+sec.tt,0);
+  const gBruto=secs.reduce((s,sec)=>s+sec.tb,0);
+  const gTotalPrev=secsPrev?secsPrev.reduce((s,sec)=>s+sec.tt,0):null;
+
+  function deltaStyle(v,prev){
+    if(prev===null||prev===undefined) return '<td style="color:var(--text3)">—</td>';
+    const d=v-prev;
+    const cls=d>=0?'v-neg':'v-pos';  // more cost = red
+    return `<td class="${cls}" style="font-size:11px;font-family:var(--mono);text-align:right">${d>=0?'+':''}${fmt(d)}</td>`;
+  }
+
+  let html=`<div class="s-head-row" style="grid-template-columns:1fr 110px 110px 110px 90px">
+    <span>Empleado</span><span>Bruto</span><span>Cargas</span><span>Coste empresa</span><span>Δ vs ${prevMes?{enero:'Ene',febrero:'Feb',marzo:'Mar',abril:'Abr'}[prevMes]:'ant.'}</span>
+  </div>`;
+
+  secs.forEach((sec,idx)=>{
+    const secPrev=secsPrev?secsPrev.find(s=>s.u===sec.u):null;
+    const isExp=sueldoExp[idx]!==false;
+    html+=`<div class="s-section">
+      <div class="s-section-head" onclick="toggleSueldoSection(${idx})">
+        <span class="s-sec-name">${sec.u}</span>
+        <div class="s-sec-right">
+          <span class="s-sec-bruto">${fmt(sec.tb)} bruto</span>
+          <span class="s-sec-total">${fmt(sec.tt)}</span>
+          ${secPrev?`<span style="font-size:11px;font-family:var(--mono);color:${sec.tt-secPrev.tt>=0?'var(--red)':'var(--green)'}">${sec.tt-secPrev.tt>=0?'+':''}${fmt(sec.tt-secPrev.tt)}</span>`:''}
+          <span class="s-sec-chev">${isExp?'▲':'▼'}</span>
+        </div>
+      </div>`;
+    if(isExp){
+      html+=`<div>`;
+      sec.emps.forEach(e=>{
+        html+=`<div class="s-emp-row" style="grid-template-columns:1fr 110px 110px 110px 90px">
+          <span class="s-emp-name">${e.n}</span>
+          <span class="s-emp-val">${fmt(e.b)}</span>
+          <span class="s-emp-val">${fmt(e.c)}</span>
+          <span class="s-emp-total">${fmt(e.t)}</span>
+          <span style="font-size:11px;font-family:var(--mono);text-align:right;color:var(--text3)">—</span>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  });
+
+  const dTotal=gTotalPrev?gTotal-gTotalPrev:null;
+  html+=`<div class="s-grand" style="grid-template-columns:1fr 110px 110px 110px 90px">
+    <span>Total sueldos</span>
+    <span>${fmt(gBruto)}</span>
+    <span>—</span>
+    <span>${fmt(gTotal)}</span>
+    <span style="color:${dTotal&&dTotal>=0?'var(--red)':'var(--green)'}">${dTotal!==null?(dTotal>=0?'+':'')+fmt(dTotal):'—'}</span>
+  </div>`;
+  document.getElementById('sueldos-scroll').innerHTML=html;
+}
+
+
+function setRvfView(v,btn){rvfView=v;document.querySelectorAll('#rvf-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRvf();}
+function renderRvf(){
+  const meses=['enero','febrero','marzo','abril'];
+  function diffBadge(r,f){if(!f)return'';const d=(r-f)/Math.abs(f)*100;const cls=d>=0?'rd-up':'rd-dn';return`<span class="rd ${cls}">${d>=0?'+':''}${d.toFixed(1)}%</span>`;}
+  function diffAbs(r,f){const d=r-f;const cls=d>=0?'v-pos':'v-neg';return`<span class="${cls}">${d>=0?'+':''}${fmt(d)}</span>`;}
+  if(rvfView==='mensual'){
+    let html='<div class="rvf-grid">';
+    meses.forEach(mes=>{
+      const r=DATA[mes];const f=FORECAST[mes];
+      html+=`<div class="rvf-card"><div class="rvf-card-title">${{enero:'Enero',febrero:'Febrero',marzo:'Marzo',abril:'Abril'}[mes]} 2026</div><div class="rvf-row"><span class="rl">Ventas real</span><span class="rv" style="color:var(--accent-light)">${fmt(r.ventas_total)}</span></div><div class="rvf-row"><span class="rl">Ventas forecast</span><span class="rf">${fmt(f.v)}</span></div><div class="rvf-row"><span class="rl">Desviación</span>${diffBadge(r.ventas_total,f.v)} ${diffAbs(r.ventas_total,f.v)}</div><div class="rvf-row"><span class="rl">MB% real</span><span class="rv" style="color:var(--green)">${p(r.mb_total,r.ventas_total)}</span></div><div class="rvf-row"><span class="rl">Resultado real</span><span class="rv" style="color:${r.resultado>=0?'var(--yellow)':'var(--red)'}">${fmt(r.resultado)}</span></div><div class="rvf-row"><span class="rl">Resultado fc</span><span class="rf">${fmt(f.neto)}</span></div><div class="rvf-row"><span class="rl">Δ resultado</span>${diffAbs(r.resultado,f.neto)}</div></div>`;
+    });
+    const tRV=meses.reduce((s,m)=>s+DATA[m].ventas_total,0);
+    const tFV=meses.reduce((s,m)=>s+FORECAST[m].v,0);
+    const tRN=meses.reduce((s,m)=>s+DATA[m].resultado,0);
+    const tFN=meses.reduce((s,m)=>s+FORECAST[m].neto,0);
+    html+=`</div><div class="rvf-table-wrap" style="margin-top:4px"><table class="rvf-table"><thead><tr><th>Resumen YTD</th><th>Real</th><th>Forecast</th><th>Δ €</th><th>Δ %</th></tr></thead><tbody><tr><td>Ventas</td><td style="color:var(--accent-light)">${fmt(tRV)}</td><td style="color:var(--text3)">${fmt(tFV)}</td><td>${diffAbs(tRV,tFV)}</td><td>${diffBadge(tRV,tFV)}</td></tr><tr class="rvf-sub"><td>Margen bruto</td><td style="color:var(--green)">${fmt(meses.reduce((s,m)=>s+DATA[m].mb_total,0))}</td><td style="color:var(--text3)">${fmt(meses.reduce((s,m)=>s+FORECAST[m].mb,0))}</td><td>${diffAbs(meses.reduce((s,m)=>s+DATA[m].mb_total,0),meses.reduce((s,m)=>s+FORECAST[m].mb,0))}</td><td>${diffBadge(meses.reduce((s,m)=>s+DATA[m].mb_total,0),meses.reduce((s,m)=>s+FORECAST[m].mb,0))}</td></tr><tr class="rvf-tot"><td>Resultado neto</td><td style="color:var(--yellow)">${fmt(tRN)}</td><td style="color:var(--text3)">${fmt(tFN)}</td><td>${diffAbs(tRN,tFN)}</td><td>${diffBadge(tRN,tFN)}</td></tr></tbody></table></div>`;
+    document.getElementById('rvf-scroll').innerHTML=html;
+  } else {
+    const allM=['enero','febrero','marzo','abril','mayo','junio'];
+    let html=`<div class="rvf-table-wrap"><table class="rvf-table"><thead><tr><th>Mes</th><th>Ventas Real</th><th>Ventas FC</th><th>Δ%</th><th>Neto Real</th><th>Neto FC</th><th>Δ Neto</th></tr></thead><tbody>`;
+    let acumR=0,acumF=0;
+    allM.forEach(mes=>{
+      const isR=['enero','febrero','marzo','abril'].includes(mes);
+      const r=isR?DATA[mes]:null;const f=FORECAST[mes];
+      if(r)acumR+=r.resultado;acumF+=f.neto;
+      html+=`<tr class="${mes==='abril'?'rvf-sub':''}"><td>${{enero:'Enero',febrero:'Febrero',marzo:'Marzo',abril:'Abril',mayo:'Mayo',junio:'Junio'}[mes]}${!isR?' <span style="font-size:9px;color:var(--text3)">(fc)</span>':''}</td><td style="color:${isR?'var(--accent-light)':'var(--text3)'}">${r?fmt(r.ventas_total):'—'}</td><td style="color:var(--text3)">${fmt(f.v)}</td><td>${r?diffBadge(r.ventas_total,f.v):'—'}</td><td style="color:${r&&r.resultado>=0?'var(--yellow)':'var(--red)'}">${r?fmt(r.resultado):'—'}</td><td style="color:var(--text3)">${fmt(f.neto)}</td><td>${r?diffAbs(r.resultado,f.neto):'—'}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+    document.getElementById('rvf-scroll').innerHTML=html;
+  }
+
+  // RvF Chart (always rendered)
+  const rvfCtx=document.getElementById('rvf-chart');
+  if(rvfCtx){
+    if(window._rvfChart){window._rvfChart.destroy();}
+    const mL=['Ene','Feb','Mar','Abr'];
+    const rV=MESES.map(m=>DATA[m].ventas_total);
+    const fV=MESES.map(m=>FORECAST[m].v);
+    const rMB=MESES.map(m=>DATA[m].mb_total);
+    const fMB=MESES.map(m=>FORECAST[m].mb);
+    const rN=MESES.map(m=>DATA[m].resultado);
+    const fN=MESES.map(m=>FORECAST[m].neto);
+    window._rvfChart=new Chart(rvfCtx,{type:'bar',data:{labels:mL,datasets:[
+      {label:'Ventas Real',data:rV,backgroundColor:'rgba(99,102,241,0.75)',borderRadius:3,order:2},
+      {label:'Ventas FC',data:fV,type:'line',borderColor:'rgba(99,102,241,0.5)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:3,order:1},
+      {label:'MB Real',data:rMB,backgroundColor:'rgba(34,211,165,0.75)',borderRadius:3,order:2},
+      {label:'MB FC',data:fMB,type:'line',borderColor:'rgba(34,211,165,0.5)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:3,order:1},
+      {label:'Neto Real',data:rN,backgroundColor:'rgba(252,211,77,0.75)',borderRadius:3,order:2},
+      {label:'Neto FC',data:fN,type:'line',borderColor:'rgba(252,211,77,0.5)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:3,order:1},
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#50505e',font:{size:9,family:'Space Mono'},boxWidth:8,padding:8}},
+        tooltip:{backgroundColor:'#18181c',borderColor:'#32323c',borderWidth:1,titleColor:'#f0f0f4',bodyColor:'#9090a8',
+          callbacks:{label:c=>`${c.dataset.label}: €${Math.round(c.raw).toLocaleString('es-ES')}`}}},
+      scales:{
+        x:{grid:{color:'rgba(38,38,46,0.5)'},ticks:{color:'#50505e',font:{size:9,family:'Space Mono'}}},
+        y:{grid:{color:'rgba(38,38,46,0.5)'},ticks:{color:'#50505e',font:{size:8,family:'Space Mono'},callback:v=>'€'+Math.round(v/1000)+'k'}}
+      }}});
+  }
+}
+
+// ── FLUJO DE CAJA ─────────────────────────────────────────────────────────────
+const CF={enero:{saldo_ini:-18000,saldo_fin:4642,entradas:[{id:'v_op',l:'Cobros operativos',v:49872,sub:[{l:'Kombo/Fudeat/Stripe/directas',v:49853},{l:'Venta aceite',v:19}]},{id:'v_fin',l:'Préstamos recibidos',v:99500,sub:[{l:'ENISA préstamo participativo',v:99500}]}],salidas:[{id:'cmv',l:'CMV / Proveedores',v:-12667,sub:[{l:'Haddock, Bastida, Kiku, Zafon...',v:-12667}]},{id:'nom',l:'Nóminas',v:-28536,sub:[{l:'Boxlunch + Scopely + Admin + Catering',v:-28536}]},{id:'ss',l:'Seguridad Social',v:-7358,sub:[{l:'Cuota SS empleados',v:-7358}]},{id:'imp',l:'Impuestos AEAT',v:-10381,sub:[{l:'Mod 111/115 + Aplazamientos',v:-10381}]},{id:'alq',l:'Alquileres',v:-3264,sub:[{l:'Alquiler local',v:-1632},{l:'Alquiler licencia',v:-1632}]},{id:'log',l:'Logística y transporte',v:-18668,sub:[{l:'Brandon/Vela repartos',v:-12668},{l:'Catering suministros',v:-4500},{l:'Logística Romero',v:-1500}]},{id:'pkg',l:'Packaging',v:-1410,sub:[{l:'Kankyo, CRAD, Envases',v:-1410}]},{id:'srv',l:'Servicios y suministros',v:-2009,sub:[{l:'Iberdrola, Securitas, Renting, Community',v:-2009}]},{id:'seg',l:'Seguros',v:-559,sub:[{l:'Multiseguros + Mybox',v:-559}]},{id:'adm',l:'Gestión y administración',v:-1874,sub:[{l:'Gestoría, sanidad, notaría, bancarias',v:-1874}]},{id:'soc',l:'Socios / no operativo',v:-3015,sub:[{l:'MILA, Wedding planner, otros',v:-3015}]},{id:'tarj',l:'Tarjeta VISA',v:-7703,sub:[{l:'Gastos tarjeta corporativa',v:-7703}]},{id:'prest',l:'Cuotas préstamos',v:-540,sub:[{l:'Cuota ENISA',v:-540}]},{id:'tras',l:'Traspaso cuentas',v:-15000,sub:[{l:'Traspaso a cuenta BBVA',v:-15000}]}]},febrero:{saldo_ini:4642,saldo_fin:13113,entradas:[{id:'v_op',l:'Cobros operativos',v:90096,sub:[{l:'Kombo Feb (cobros ×2), Stripe, directas',v:90096}]}],salidas:[{id:'cmv',l:'CMV / Proveedores',v:-25197,sub:[{l:'Guzman, Kiku, Bastida, Bidfood, Cuevas, otros',v:-25197}]},{id:'nom',l:'Nóminas',v:-29692,sub:[{l:'Boxlunch + Scopely + Admin + Catering',v:-29692}]},{id:'ss',l:'Seguridad Social',v:-8458,sub:[{l:'Cuota SS',v:-8458}]},{id:'imp',l:'Impuestos AEAT',v:-1307,sub:[{l:'Aplazamientos AEAT',v:-1307}]},{id:'alq',l:'Alquileres',v:-3264,sub:[{l:'Alquiler local',v:-1632},{l:'Alquiler licencia',v:-1632}]},{id:'log',l:'Logística y transporte',v:-10846,sub:[{l:'Brandon',v:-5994},{l:'Catering Marocchi+Casa Gay',v:-3812},{l:'Logística Romero',v:-1039}]},{id:'pkg',l:'Packaging',v:-2229,sub:[{l:'Kankyo, CRAD, Envases',v:-2229}]},{id:'srv',l:'Servicios',v:-2490,sub:[{l:'Iberdrola, Aigues, Securitas, Renting, Community',v:-2490}]},{id:'seg',l:'Seguros',v:-575,sub:[{l:'Multiseguros + Mybox',v:-575}]},{id:'adm',l:'Gestión',v:-1018,sub:[{l:'Gestoría, abogados, bancarias',v:-1018}]},{id:'soc',l:'Socios / no operativo',v:-6017,sub:[{l:'MILA, Flor Mejia, Wedding planner, otros',v:-6017}]},{id:'tarj',l:'Tarjeta VISA',v:-6534,sub:[{l:'Gastos tarjeta',v:-6534}]},{id:'prest',l:'Cuotas préstamos',v:-1010,sub:[{l:'Cuota CaixaBank',v:-1010}]}]},marzo:{saldo_ini:13113,saldo_fin:12913,entradas:[{id:'v_op',l:'Cobros operativos',v:109629,sub:[{l:'Kombo Mar, Stripe, directas',v:109629}]},{id:'tras',l:'Traspaso desde BBVA',v:10000,sub:[{l:'Traspaso BBVA → CaixaBank',v:10000}]}],salidas:[{id:'cmv',l:'CMV / Proveedores',v:-52831,sub:[{l:'Guzman ×2, Bidfood, Kiku ×2, Bastida, Cuevas, otros',v:-52831}]},{id:'nom',l:'Nóminas',v:-24881,sub:[{l:'Boxlunch + Scopely + Admin + Catering + Yuki',v:-24881}]},{id:'ss',l:'Seguridad Social',v:-8119,sub:[{l:'Cuota SS',v:-8119}]},{id:'imp',l:'Impuestos AEAT',v:-1311,sub:[{l:'Aplazamientos AEAT',v:-1311}]},{id:'alq',l:'Alquileres',v:-3264,sub:[{l:'Alquiler local',v:-1632},{l:'Alquiler licencia',v:-1632}]},{id:'cam',l:'Inversión cámara frigorífica',v:-5909,sub:[{l:'Fricontrol — anticipo 50%',v:-5909}]},{id:'log',l:'Logística',v:-10589,sub:[{l:'Brandon',v:-5520},{l:'Catering Casa Gay+Marocchi',v:-4132},{l:'Logística Romero',v:-937}]},{id:'pkg',l:'Packaging',v:-2856,sub:[{l:'Kankyo, CRAD, Garcia de Pou',v:-2856}]},{id:'srv',l:'Servicios',v:-2204,sub:[{l:'Iberdrola, Securitas, Renting, Community',v:-2204}]},{id:'seg',l:'Seguros',v:-575,sub:[{l:'Multiseguros',v:-575}]},{id:'adm',l:'Gestión',v:-1273,sub:[{l:'Gestoría, bancarias, mantenimiento',v:-1273}]},{id:'soc',l:'Socios / no operativo',v:-6575,sub:[{l:'MILA, Flor Mejia, Wedding planner, otros',v:-6575}]},{id:'tarj',l:'Tarjeta VISA',v:-10005,sub:[{l:'Gastos tarjeta',v:-10005}]},{id:'prest',l:'Cuotas préstamos',v:-1070,sub:[{l:'Cuota CaixaBank',v:-1070}]}]},abril:{saldo_ini:12913,saldo_fin:8737,entradas:[{id:'v_op',l:'Cobros operativos',v:135550,sub:[{l:'Kombo Abr (~112k), Stripe, directas',v:135550}]},{id:'prest',l:'Préstamo CaixaBank',v:35000,sub:[{l:'Préstamo CaixaBank 80257978936',v:35000}]}],salidas:[{id:'cmv',l:'CMV / Proveedores',v:-32490,sub:[{l:'Bidfood, Kiku ×2, Cuevas, Bastida, Garmiko, Makro, Verbena',v:-32490}]},{id:'nom',l:'Nóminas',v:-39731,sub:[{l:'Boxlunch + Scopely + Admin + Catering',v:-39731}]},{id:'ss',l:'Seguridad Social',v:-8881,sub:[{l:'Cuota SS',v:-8881}]},{id:'imp',l:'Impuestos AEAT',v:-14022,sub:[{l:'Mod 111 1T 2026 (€10.767), Mod 115, aplazamientos',v:-14022}]},{id:'alq',l:'Alquileres',v:-3264,sub:[{l:'Alquiler local',v:-1632},{l:'Alquiler licencia',v:-1632}]},{id:'cam',l:'Inversión cámara frigorífica',v:-5909,sub:[{l:'Fricontrol — pago final 50%',v:-5909}]},{id:'log',l:'Logística',v:-10695,sub:[{l:'Carlos Vela González',v:-5040},{l:'Catering Casares+Casa Gay',v:-4591},{l:'Logística Romero',v:-1063}]},{id:'pkg',l:'Packaging',v:-3446,sub:[{l:'Kankyo, CRAD, Envases, Makro',v:-3446}]},{id:'srv',l:'Servicios',v:-1935,sub:[{l:'Aigues, Securitas, Renting, Community',v:-1935}]},{id:'seg',l:'Seguros',v:-631,sub:[{l:'Multiseguros + Mybox',v:-631}]},{id:'adm',l:'Gestión',v:-1019,sub:[{l:'Gestoría, imprenta, bancarias, notaría',v:-1019}]},{id:'enisa',l:'Devolución ENISA',v:-1375,sub:[{l:'Cuota préstamo participativo',v:-1375}]},{id:'soc',l:'Socios / no operativo',v:-15848,sub:[{l:'Nicolas Casares, MILA, Metropolitan, socios, otros',v:-15848}]},{id:'tarj',l:'Tarjeta VISA',v:-5748,sub:[{l:'Gastos tarjeta',v:-5748}]},{id:'prest2',l:'Cuotas préstamos',v:-1010,sub:[{l:'Cuota CaixaBank',v:-1010}]},{id:'tras',l:'Traspaso neto cuentas',v:-15000,sub:[{l:'Traspaso BBVA (-35k) + entrada (+20k)',v:-15000}]}]}};
+function getFlujoCacum(){const m=['enero','febrero','marzo','abril'];const eM={},sM={};m.forEach(mes=>{CF[mes].entradas.forEach(g=>{if(!eM[g.id])eM[g.id]={...g,v:0};eM[g.id].v+=g.v;});CF[mes].salidas.forEach(g=>{if(!sM[g.id])sM[g.id]={...g,v:0};sM[g.id].v+=g.v;});});return{saldo_ini:CF.enero.saldo_ini,saldo_fin:CF.abril.saldo_fin,entradas:Object.values(eM),salidas:Object.values(sM)};}
+
+let flujoPeriod='abril';
+let flujoExp={};
+function setFlujoPeriod(p,btn){flujoPeriod=p;document.querySelectorAll('#flujo-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderFlujo();}
+function toggleFlujoItem(id){flujoExp[id]=!flujoExp[id];renderFlujo();}
+function renderFlujo(){
+  const d=flujoPeriod==='acumulado'?getFlujoCacum():CF[flujoPeriod];
+  const lbl={enero:'Enero',febrero:'Febrero',marzo:'Marzo',abril:'Abril',acumulado:'Ene–Abr'}[flujoPeriod];
+  const totalEnt=d.entradas.reduce((s,g)=>s+g.v,0);
+  const totalSal=d.salidas.reduce((s,g)=>s+g.v,0);
+  const neto=totalEnt+totalSal;
+  document.getElementById('flujo-kpis').innerHTML=`<div class="flujo-kpi"><div class="flujo-kpi-l">Total cobros</div><div class="flujo-kpi-v" style="color:var(--green)">${fmt(totalEnt)}</div><div class="flujo-kpi-s">${lbl}</div></div><div class="flujo-kpi"><div class="flujo-kpi-l">Total pagos</div><div class="flujo-kpi-v" style="color:var(--red)">${fmt(totalSal)}</div><div class="flujo-kpi-s">${lbl}</div></div><div class="flujo-kpi"><div class="flujo-kpi-l">Flujo neto</div><div class="flujo-kpi-v" style="color:${neto>=0?'var(--accent-light)':'var(--red)'}">${fmt(neto)}</div><div class="flujo-kpi-s">Cobros − Pagos</div></div><div class="flujo-kpi"><div class="flujo-kpi-l">Saldo cierre banco</div><div class="flujo-kpi-v" style="color:${d.saldo_fin>=0?'var(--yellow)':'var(--red)'}">${fmt(d.saldo_fin)}</div><div class="flujo-kpi-s">Verificado extracto</div></div>`;
+  document.getElementById('flujo-head').innerHTML=`<tr><th style="text-align:left;padding-left:20px;width:240px">Concepto</th><th class="ing">Importe</th><th>Participación</th><th style="width:220px;text-align:left;padding-left:8px">Detalle</th></tr>`;
+  function pctBar(v,total,color){const w=Math.min(100,Math.round(Math.abs(v)/Math.abs(total)*100));return`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden"><div style="width:${w}%;height:100%;background:${color};border-radius:2px"></div></div><span style="font-size:10px;font-family:var(--mono);color:var(--text3);width:30px;text-align:right">${w}%</span></div>`;}
+  let body=`<tr class="f-saldo"><td>Saldo inicio ${lbl}</td><td class="${d.saldo_ini>=0?'v-saldo-pos':'v-saldo-neg'}">${fmt(d.saldo_ini)}</td><td></td><td></td></tr>`;
+  body+=`<tr class="f-section"><td colspan="4">COBROS</td></tr>`;
+  d.entradas.forEach(g=>{const isExp=flujoExp['e_'+g.id];const hasSub=g.sub&&g.sub.length>1;body+=`<tr class="f-group" onclick="${hasSub?`toggleFlujoItem('e_${g.id}')`:''}" style="${!hasSub?'cursor:default':''}"><td>${hasSub?`<span class="chev ${isExp?'open':''}" style="margin-right:6px">›</span>`:'<span style="width:18px;display:inline-block"></span>'}${g.l}</td><td class="v-ing">${fmt(g.v)}</td><td>${pctBar(g.v,totalEnt,'var(--green)')}</td><td style="font-size:10px;color:var(--text3)">${!isExp&&g.sub?g.sub[0].l:''}</td></tr>`;if(isExp&&g.sub){g.sub.forEach(s=>{body+=`<tr class="f-item"><td class="indent">↳ ${s.l}</td><td class="v-ing" style="font-size:12px">${fmt(s.v)}</td><td></td><td></td></tr>`;});}});
+  body+=`<tr class="f-sub"><td>Total cobros</td><td class="v-ing">${fmt(totalEnt)}</td><td></td><td></td></tr>`;
+  body+=`<tr class="f-section"><td colspan="4">PAGOS</td></tr>`;
+  d.salidas.sort((a,b)=>a.v-b.v).forEach(g=>{const isExp=flujoExp['s_'+g.id];const hasSub=g.sub&&g.sub.length>1;body+=`<tr class="f-group" onclick="${hasSub?`toggleFlujoItem('s_${g.id}')`:''}" style="${!hasSub?'cursor:default':''}"><td>${hasSub?`<span class="chev ${isExp?'open':''}" style="margin-right:6px">›</span>`:'<span style="width:18px;display:inline-block"></span>'}${g.l}</td><td class="v-eg">${fmt(g.v)}</td><td>${pctBar(g.v,totalSal,'var(--red)')}</td><td style="font-size:10px;color:var(--text3)">${!isExp&&g.sub?g.sub[0].l:''}</td></tr>`;if(isExp&&g.sub){g.sub.forEach(s=>{body+=`<tr class="f-item"><td class="indent">↳ ${s.l}</td><td class="v-eg" style="font-size:12px">${fmt(s.v)}</td><td></td><td></td></tr>`;});}});
+  body+=`<tr class="f-sub"><td>Total pagos</td><td class="v-eg">${fmt(totalSal)}</td><td></td><td></td></tr>`;
+  body+=`<tr class="f-total"><td>FLUJO NETO DEL PERÍODO</td><td class="${neto>=0?'v-net-pos':'v-net-neg'}">${fmt(neto)}</td><td></td><td></td></tr>`;
+  body+=`<tr class="f-saldo"><td>Saldo cierre ${lbl} (banco)</td><td class="${d.saldo_fin>=0?'v-saldo-pos':'v-saldo-neg'}">${fmt(d.saldo_fin)}</td><td></td><td></td></tr>`;
+  document.getElementById('flujo-body').innerHTML=body;
+
+  // Chart
+  const flujoCtx = document.getElementById('flujo-chart');
+  if(flujoCtx){
+    if(window._flujoChart){window._flujoChart.destroy();}
+    const meses4=['enero','febrero','marzo','abril'];
+    const mLabels=['Enero','Febrero','Marzo','Abril'];
+    const entradas=meses4.map(m=>CF[m].entradas.reduce((s,g)=>s+g.v,0));
+    const salidas=meses4.map(m=>Math.abs(CF[m].salidas.reduce((s,g)=>s+g.v,0)));
+    const saldos=meses4.map(m=>CF[m].saldo_fin);
+    window._flujoChart = new Chart(flujoCtx,{
+      type:'bar',
+      data:{labels:mLabels,datasets:[
+        {label:'Cobros',data:entradas,backgroundColor:'rgba(34,211,165,0.7)',borderRadius:3,order:2},
+        {label:'Pagos',data:salidas,backgroundColor:'rgba(248,113,113,0.7)',borderRadius:3,order:2},
+        {label:'Saldo cierre',data:saldos,type:'line',borderColor:'rgba(252,211,77,0.8)',backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointBackgroundColor:'rgba(252,211,77,0.9)',order:1,yAxisID:'y2'},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#50505e',font:{size:9,family:'Space Mono'},boxWidth:8,padding:10}},
+          tooltip:{backgroundColor:'#18181c',borderColor:'#32323c',borderWidth:1,titleColor:'#f0f0f4',bodyColor:'#9090a8',
+            callbacks:{label:ctx=>`${ctx.dataset.label}: €${Math.round(ctx.raw).toLocaleString('es-ES')}`}}},
+        scales:{
+          x:{grid:{color:'rgba(38,38,46,0.5)'},ticks:{color:'#50505e',font:{size:9,family:'Space Mono'}}},
+          y:{grid:{color:'rgba(38,38,46,0.5)'},ticks:{color:'#50505e',font:{size:8,family:'Space Mono'},callback:v=>'€'+Math.round(v/1000)+'k'},title:{display:true,text:'Cobros / Pagos',color:'#50505e',font:{size:8}}},
+          y2:{position:'right',grid:{display:false},ticks:{color:'#fcd34d',font:{size:8,family:'Space Mono'},callback:v=>'€'+Math.round(v/1000)+'k'},title:{display:true,text:'Saldo',color:'#fcd34d',font:{size:8}}}
+        }}
+    });
+  }
+}
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+function exportToCSV(){
+  const panel=document.querySelector('.panel.active');
+  const panelId=panel?.id;
+  const per={enero:'Ene',febrero:'Feb',marzo:'Mar',abril:'Abr',acumulado:'YTD'};
+  const pLabel=per[panelId==='panel-pnl'?pnlPeriod:panelId==='panel-marcas'?marcasPeriod:panelId==='panel-flujo'?flujoPeriod:'abril']||'';
+  let csv='';
+  if(panelId==='panel-pnl'){
+    const d=getPD(pnlPeriod);
+    csv='Concepto;Importe;% s/ventas\n';
+    d.marcas.filter(m=>m.v>0).forEach(m=>{csv+=`${m.n};${m.v};${(m.v/d.ventas_total*100).toFixed(1)}%\n`;});
+    csv+=`Total ventas;${d.ventas_total};\nCMV;${-d.cmv_total};${(d.cmv_total/d.ventas_total*100).toFixed(1)}%\nMargen Bruto;${d.mb_total};${(d.mb_total/d.ventas_total*100).toFixed(1)}%\nKombo comisiones;${-d.comis_total};${(d.comis_total/d.ventas_total*100).toFixed(1)}%\nSueldos + Cargas;${-(d.sueldos+d.cargas)};${((d.sueldos+d.cargas)/d.ventas_total*100).toFixed(1)}%\nAlquiler;-1600;\nAlquiler licencia;-1900;\n`;
+    const ss={'enero':7500,'febrero':7772.70,'marzo':7772.70,'abril':7781.82}[pnlPeriod]||0;
+    csv+=`Sueldos socios;${-ss};\nPackaging;${-(d.packaging||0)};\nOtros gastos;${-(d.otros_g||0)};\nNeto;${d.resultado};\n`;
+  }else if(panelId==='panel-flujo'){
+    const d=flujoPeriod==='acumulado'?getFlujoCacum():CF[flujoPeriod];
+    csv='Tipo;Concepto;Importe\n'+`Saldo inicio;;${d.saldo_ini}\n`;
+    d.entradas.forEach(g=>{csv+=`Entrada;${g.l};${g.v}\n`;});
+    d.salidas.forEach(g=>{csv+=`Salida;${g.l};${g.v}\n`;});
+    csv+=`Saldo cierre;;${d.saldo_fin}\n`;
+  }else{
+    const d=getPD(marcasPeriod||'abril');
+    csv='Marca;Ventas;CMV;Margen Bruto;MB%\n';
+    d.marcas.filter(m=>m.v>0).sort((a,b)=>b.v-a.v).forEach(m=>{const mb=m.v-(m.cmv||0);csv+=`${m.n};${m.v};${m.cmv||0};${mb};${m.v?(mb/m.v*100).toFixed(1)+'%':''}\n`;});
+  }
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`FigaLunch_${panelId?.replace('panel-','')||'export'}_${pLabel}_2026.csv`;a.click();URL.revokeObjectURL(url);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+fetchData().then(() => { renderOverview(); renderPnlCompare(); });
+
+</script>
+</body>
+</html>
