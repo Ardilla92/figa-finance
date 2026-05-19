@@ -672,12 +672,13 @@ async function fetchData() {
       if (!MESES.includes(mes)) mergedData[mes] = apiData[mes];
     });
     DATA = mergedData;
-    if (json.sueldos) SUELDOS = json.sueldos;
-    // Nuevas hojas — solo se usan si el Sheet las tiene
-    if (json.kpi_ops)     KPI_OPS     = json.kpi_ops;
-    if (json.cmv_semanal) CMV_SEMANAL = json.cmv_semanal;
-    if (json.forecast)    Object.assign(FORECAST, json.forecast);
-    if (json.flujo)       Object.assign(CF, json.flujo);
+
+    // Datos del Sheet — reemplaza siempre lo que viene (si no está en el Sheet, no aparece)
+    if (json.sueldos     != null) SUELDOS     = json.sueldos;
+    if (json.kpi_ops     != null) KPI_OPS     = json.kpi_ops;
+    if (json.cmv_semanal != null) CMV_SEMANAL = json.cmv_semanal;
+    if (json.forecast    != null) Object.assign(FORECAST, json.forecast);
+    if (json.flujo       != null) Object.assign(CF, json.flujo);
 
     // Update sidebar updated time
     const updEl = document.getElementById('last-updated');
