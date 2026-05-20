@@ -271,31 +271,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .chart-strip{height:180px;background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px 10px;flex-shrink:0;position:relative}
 .chart-strip canvas{display:block}
 .chart-strip-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
-/* ── CMV SEMANAL ── */
-.cmv-semanal-scroll{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:20px}
-.cmv-semana-block{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.cmv-semana-title{padding:12px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);display:flex;justify-content:space-between;align-items:center}
-.cmv-semana-title .stotals{display:flex;gap:20px}
-.cmv-semana-title .stot{font-size:11px;font-family:var(--mono);color:var(--text3)}
-.cmv-semana-title .stot span{color:var(--text);font-weight:700}
-.cmv-table{width:100%;border-collapse:collapse}
-.cmv-table th{padding:7px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);text-align:right;font-family:var(--mono);font-weight:400}
-.cmv-table th:first-child{text-align:left}
-.cmv-table td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px;font-family:var(--mono);text-align:right;color:var(--text2)}
-.cmv-table td:first-child{text-align:left;font-family:var(--font);font-size:12px;display:flex;align-items:center;gap:7px}
-.cmv-table tr:last-child td{border-bottom:none;background:var(--accent-dim);font-weight:700;color:var(--text)}
-.cmv-table tr.cmv-total td{background:var(--accent-dim);border-top:1px solid var(--accent);font-weight:700}
-.cmv-pct-good{color:var(--green)}
-.cmv-pct-mid{color:var(--yellow)}
-.cmv-pct-bad{color:var(--red)}
-/* ── KPIs PANEL ── */
-.kpi-section-title{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px}
-.kpi-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.kpi-ops-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden}
-.kpi-ops-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c,var(--text3))}
-.kpi-ops-card .kl{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
-.kpi-ops-card .kv{font-size:24px;font-weight:800;font-family:var(--mono);line-height:1;margin-bottom:6px;letter-spacing:-.02em}
-.kpi-ops-card .ks{font-size:10px;color:var(--text3)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -322,8 +297,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="nav-item" onclick="showPanel('rvf',this)"><span class="ico">⊙</span> Real vs Forecast</div>
     <div class="nav-item" onclick="showPanel('flujo',this)"><span class="ico">⇅</span> Flujo de caja</div>
     <div class="nav-item" onclick="showPanel('analisis',this)"><span class="ico">◎</span> Análisis Abril</div>
-    <div class="nav-item" onclick="showPanel('kpis',this)"><span class="ico">◉</span> KPIs</div>
-    <div class="nav-item" onclick="showPanel('cmvsemanal',this)"><span class="ico">▦</span> CMV Semanal</div>
   </div>
   <div class="nav-section">
     <div class="nav-label">YTD Ene–Abr 2026</div>
@@ -335,7 +308,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="ytd-row"><span class="yl">Resultado</span><span class="yv" style="color:var(--yellow)">25.121€</span></div>
     </div>
   </div>
-  <div class="sidebar-footer">v2 · 2026</div>
+  <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:8px">
+    <button id="refresh-btn" onclick="refreshData()" style="
+      background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent-light);
+      font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:.06em;
+      padding:8px 12px;border-radius:6px;cursor:pointer;width:100%;
+      transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px">
+      <span id="refresh-ico">🔄</span> Actualizar datos
+    </button>
+    <div style="font-size:9px;color:var(--text3)">v2 · 2026</div>
+  </div>
 </nav>
 
 <!-- MAIN -->
@@ -392,13 +374,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="topbar">
       <span class="topbar-title">Por marca</span>
       <div class="ptabs" id="marcas-tabs">
-        <button class="ptab" onclick="toggleMarcasPeriod('enero')">Ene</button>
-        <button class="ptab" onclick="toggleMarcasPeriod('febrero')">Feb</button>
-        <button class="ptab active" onclick="toggleMarcasPeriod('marzo')">Mar</button>
-        <button class="ptab active" onclick="toggleMarcasPeriod('abril')">Abr</button>
-        <button class="ptab" onclick="toggleMarcasPeriod('acumulado')">YTD</button>
+        <button class="ptab" onclick="setMarcasPeriod('enero',this)">Ene</button>
+        <button class="ptab" onclick="setMarcasPeriod('febrero',this)">Feb</button>
+        <button class="ptab" onclick="setMarcasPeriod('marzo',this)">Mar</button>
+        <button class="ptab active" onclick="setMarcasPeriod('abril',this)">Abr</button>
+        <button class="ptab" onclick="setMarcasPeriod('acumulado',this)">YTD</button>
       </div>
-      <span style="font-size:10px;color:var(--text3);margin-left:6px">· Seleccioná 2 meses para comparar</span>
     </div>
     <div class="marcas-grid" id="marcas-grid"></div>
   </div>
@@ -469,35 +450,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <span style="font-size:11px;color:var(--text3)">Abril 2026 · Variación vs marzo</span>
     </div>
     <div class="ov-scroll" id="analisis-scroll"></div>
-  </div>
-
-  <!-- KPIs -->
-  <div class="panel" id="panel-kpis">
-    <div class="topbar">
-      <span class="topbar-title">KPIs</span>
-      <div class="ptabs" id="kpis-tabs">
-        <button class="ptab" onclick="setKpiPeriod('enero',this)">Ene</button>
-        <button class="ptab" onclick="setKpiPeriod('febrero',this)">Feb</button>
-        <button class="ptab" onclick="setKpiPeriod('marzo',this)">Mar</button>
-        <button class="ptab active" onclick="setKpiPeriod('abril',this)">Abr</button>
-        <button class="ptab" onclick="setKpiPeriod('acumulado',this)">YTD</button>
-      </div>
-    </div>
-    <div class="ov-scroll" id="kpis-scroll"></div>
-  </div>
-
-  <!-- CMV SEMANAL -->
-  <div class="panel" id="panel-cmvsemanal">
-    <div class="topbar">
-      <span class="topbar-title">CMV Semanal</span>
-      <div class="ptabs" id="cmv-tabs">
-        <button class="ptab" onclick="setCmvPeriod('enero',this)">Ene</button>
-        <button class="ptab" onclick="setCmvPeriod('febrero',this)">Feb</button>
-        <button class="ptab" onclick="setCmvPeriod('marzo',this)">Mar</button>
-        <button class="ptab active" onclick="setCmvPeriod('abril',this)">Abr</button>
-      </div>
-    </div>
-    <div class="cmv-semanal-scroll" id="cmv-semanal-scroll"></div>
   </div>
 
 </div>
@@ -630,13 +582,40 @@ const FORECAST = {
 };
 
 
-// ── Copia estática para smart merge (se preservan datos auditados) ───
-const STATIC_DATA = JSON.parse(JSON.stringify(DATA));
-
 // ── Estado de carga ──────────────────────────────────────────────────
 let dataLoaded = false;
 let dataLoadError = null;
 
+const CACHE_KEY = 'figafinance_cache';
+
+// Aplica un objeto de datos del Sheet sobre las variables globales
+function applyApiData(json) {
+  if (json.data)        DATA        = json.data;
+  if (json.sueldos)     SUELDOS     = json.sueldos;
+  if (json.forecast)    Object.assign(FORECAST, json.forecast);
+  if (json.flujo)       Object.assign(CF, json.flujo);
+  if (json.kpi_ops)     KPI_OPS     = json.kpi_ops;
+  if (json.cmv_semanal) CMV_SEMANAL = json.cmv_semanal;
+}
+
+// Carga desde localStorage y renderiza. Devuelve true si había cache.
+function loadFromCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return false;
+    const { json, savedAt } = JSON.parse(raw);
+    applyApiData(json);
+    const updEl = document.getElementById('last-updated');
+    if (updEl) updEl.textContent = 'Cache: ' + new Date(savedAt).toLocaleString('es-ES', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    dataLoaded = true;
+    return true;
+  } catch(e) {
+    console.warn('Cache inválido, se ignoró:', e.message);
+    return false;
+  }
+}
+
+// Fetch a la API, guarda en cache y aplica datos
 async function fetchData() {
   if (!API_URL) {
     console.log('Sin API_URL — usando datos estáticos');
@@ -650,52 +629,54 @@ async function fetchData() {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    if (!json.ok) throw new Error('API error');
+    if (!json.ok) throw new Error('API error: ' + (json.error || ''));
 
-    // Smart merge: preserva resultado/ebitda auditados y marcas estáticas si API incompleta
-    const mergedData = {};
-    const apiData = json.data || {};
-    MESES.forEach(mes => {
-      const staticMes = STATIC_DATA[mes] || {};
-      const apiMes = apiData[mes] || {};
-      const apiMarcas = (apiMes.marcas || []).filter(m => m.v > 0);
-      mergedData[mes] = {
-        ...staticMes,
-        ...apiMes,
-        resultado:  staticMes.resultado,  // siempre del HTML (auditado)
-        ebitda:     staticMes.ebitda,     // siempre del HTML (auditado)
-        marcas: apiMarcas.length >= 4 ? apiMarcas : staticMes.marcas,
-      };
-    });
-    // Meses nuevos (mayo+) si el Sheet los tiene
-    Object.keys(apiData).forEach(mes => {
-      if (!MESES.includes(mes)) mergedData[mes] = apiData[mes];
-    });
-    DATA = mergedData;
+    // Guardar en localStorage
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ json, savedAt: new Date().toISOString() }));
 
-    // Datos del Sheet — reemplaza siempre lo que viene (si no está en el Sheet, no aparece)
-    if (json.sueldos     != null) SUELDOS     = json.sueldos;
-    if (json.kpi_ops     != null) KPI_OPS     = json.kpi_ops;
-    if (json.cmv_semanal != null) CMV_SEMANAL = json.cmv_semanal;
-    if (json.forecast    != null) Object.assign(FORECAST, json.forecast);
-    if (json.flujo       != null) Object.assign(CF, json.flujo);
+    applyApiData(json);
 
-    // Update sidebar updated time
     const updEl = document.getElementById('last-updated');
-    if (updEl) updEl.textContent = 'Actualizado: ' + new Date(json.updated).toLocaleString('es-ES', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    if (updEl) updEl.textContent = 'Actualizado: ' + new Date(json.updated || new Date()).toLocaleString('es-ES', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 
     dataLoaded = true;
     dataLoadError = null;
-    console.log('Datos cargados desde API:', Object.keys(DATA));
+    console.log('Datos cargados desde API y guardados en cache');
   } catch(err) {
     dataLoadError = err.message;
     dataLoaded = true;
-    console.warn('Error cargando API, usando datos estáticos:', err.message);
+    console.warn('Error API, usando datos actuales:', err.message);
   } finally {
     if (banner) banner.style.display = 'none';
-    // Re-render active panel
-    renderOverview();
-    renderPnlCompare();
+    renderAll();
+  }
+}
+
+// Botón "Actualizar datos" — fetch manual
+async function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  const ico = document.getElementById('refresh-ico');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+  if (ico) ico.textContent = '⏳';
+  await fetchData();
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  if (ico) ico.textContent = '🔄';
+}
+
+// renderAll: re-renderiza el panel activo y los comunes
+function renderAll() {
+  renderOverview();
+  renderPnlCompare();
+  const active = document.querySelector('.panel.active');
+  if (active) {
+    const id = active.id.replace('panel-', '');
+    if (id === 'marcas')   renderMarcas();
+    if (id === 'sueldos')  renderSueldos();
+    if (id === 'rvf')      renderRvf();
+    if (id === 'flujo')    renderFlujo();
+    if (id === 'analisis') renderAnalisis();
+    if (id === 'kpis')     { if(typeof renderKPIs==='function') renderKPIs(); }
+    if (id === 'cmvsemanal') { if(typeof renderCMVSemanal==='function') renderCMVSemanal(); }
   }
 }
 
@@ -706,11 +687,9 @@ async function fetchData() {
 
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let ovPeriod='abril', pnlPeriod='abril', sueldosPeriod='abril';
+let ovPeriod='abril', pnlPeriod='abril', marcasPeriod='abril', sueldosPeriod='abril';
 let comparePeriods=['marzo','abril'];
 let compareMode=true;
-// Estado independiente para "Por marca" — desacoplado del P&L
-let marcasComparePeriods=['marzo','abril'];
 let expanded={}, allExp=false, sueldoExp={};
 let visibleCols={ventas:true,cmv:true,margen:true,comis:true,pct:false,forecast:false};
 let ovChart=null;
@@ -1014,16 +993,20 @@ function renderAnalisis(){
 
 
 
-function toggleMarcasPeriod(period){
-  if(marcasComparePeriods.includes(period)){
-    if(marcasComparePeriods.length>1) marcasComparePeriods=marcasComparePeriods.filter(p=>p!==period);
+function toggleMarcasPeriod(period, btn){
+  // Add/remove from comparePeriods
+  if(comparePeriods.includes(period)){
+    if(comparePeriods.length > 1) comparePeriods = comparePeriods.filter(p=>p!==period);
   } else {
-    if(marcasComparePeriods.length>=2) marcasComparePeriods.shift();
-    marcasComparePeriods.push(period);
+    if(comparePeriods.length >= 2) comparePeriods.shift();
+    comparePeriods.push(period);
   }
+  compareMode = comparePeriods.length === 2;
+  marcasPeriod = comparePeriods[comparePeriods.length-1];
+  // Update tab highlights
   const map={Ene:'enero',Feb:'febrero',Mar:'marzo',Abr:'abril',YTD:'acumulado'};
   document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>{
-    b.classList.toggle('active', marcasComparePeriods.includes(map[b.innerText]));
+    b.classList.toggle('active', comparePeriods.includes(map[b.innerText]));
   });
   renderMarcas();
 }
@@ -1034,13 +1017,11 @@ function showPanel(id,el){
   document.getElementById('panel-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='pnl')renderPnlCompare();
-  if(id==='marcas') renderMarcas();
+  if(id==='marcas'){compareMode=comparePeriods.length===2;renderMarcas();}
   if(id==='sueldos')renderSueldos();
   if(id==='rvf')renderRvf();
   if(id==='flujo')renderFlujo();
   if(id==='analisis')renderAnalisis();
-  if(id==='kpis')renderKPIs();
-  if(id==='cmvsemanal')renderCMVSemanal();
 }
 
 // ── OVERVIEW ─────────────────────────────────────────────────────────────────
@@ -1048,7 +1029,7 @@ function setOvPeriod(p,btn){
   ovPeriod=p;
   document.querySelectorAll('#ov-tabs .ptab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  fetchData().then(() => { renderOverview(); renderPnlCompare(); });
+  renderAll();
 renderAnalisis();
 }
 
@@ -1349,12 +1330,13 @@ document.getElementById('pnl-body').innerHTML=body;
 }
 
 // ── MARCAS ────────────────────────────────────────────────────────────────────
+function setMarcasPeriod(p,btn){marcasPeriod=p;document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMarcas();}
 function renderMarcas(){
-  const isCompare = marcasComparePeriods.length === 2;
+  const isCompare = compareMode && comparePeriods.length === 2;
   
   if(isCompare){
     // ── COMPARE: two columns side by side ──────────────────────────────────
-    const [p1, p2] = marcasComparePeriods.map(k=>({key:k, data:getPD(k)}));
+    const [p1, p2] = comparePeriods.map(k=>({key:k, data:getPD(k)}));
     const allNames = [...new Set([
       ...(p1.data.marcas||[]).map(m=>m.n),
       ...(p2.data.marcas||[]).map(m=>m.n)
@@ -1432,7 +1414,7 @@ function renderMarcas(){
   }
 
   // ── SINGLE PERIOD ──────────────────────────────────────────────────────────
-  const d=getPD(marcasComparePeriods[0]);
+  const d=getPD(marcasPeriod);
   const sorted=[...d.marcas].filter(m=>m.v>0).sort((a,b)=>b.v-a.v);
   const maxV=sorted[0]?.v||1;
   let htmlOut='';
@@ -1642,8 +1624,7 @@ function exportToCSV(){
   const panel=document.querySelector('.panel.active');
   const panelId=panel?.id;
   const per={enero:'Ene',febrero:'Feb',marzo:'Mar',abril:'Abr',acumulado:'YTD'};
-  const marcasActivePeriod = marcasComparePeriods[marcasComparePeriods.length-1] || 'abril';
-  const pLabel=per[panelId==='panel-pnl'?pnlPeriod:panelId==='panel-marcas'?marcasActivePeriod:panelId==='panel-flujo'?flujoPeriod:'abril']||'';
+  const pLabel=per[panelId==='panel-pnl'?pnlPeriod:panelId==='panel-marcas'?marcasPeriod:panelId==='panel-flujo'?flujoPeriod:'abril']||'';
   let csv='';
   if(panelId==='panel-pnl'){
     const d=getPD(pnlPeriod);
@@ -1659,7 +1640,7 @@ function exportToCSV(){
     d.salidas.forEach(g=>{csv+=`Salida;${g.l};${g.v}\n`;});
     csv+=`Saldo cierre;;${d.saldo_fin}\n`;
   }else{
-    const d=getPD(marcasActivePeriod||'abril');
+    const d=getPD(marcasPeriod||'abril');
     csv='Marca;Ventas;CMV;Margen Bruto;MB%\n';
     d.marcas.filter(m=>m.v>0).sort((a,b)=>b.v-a.v).forEach(m=>{const mb=m.v-(m.cmv||0);csv+=`${m.n};${m.v};${m.cmv||0};${mb};${m.v?(mb/m.v*100).toFixed(1)+'%':''}\n`;});
   }
@@ -1668,177 +1649,18 @@ function exportToCSV(){
   const a=document.createElement('a');a.href=url;a.download=`FigaLunch_${panelId?.replace('panel-','')||'export'}_${pLabel}_2026.csv`;a.click();URL.revokeObjectURL(url);
 }
 
-// ── KPIs OPERACIONALES ───────────────────────────────────────────────
-// Todos los valores vienen del Sheet (hoja KPI_OPS). No hay datos hardcodeados.
-let KPI_OPS = {};
-
-// ── CMV SEMANAL ─────────────────────────────────────────────────────
-// Todos los valores vienen del Sheet (hoja CMV_SEMANAL). No hay datos hardcodeados.
-let CMV_SEMANAL = {};
-
-// ── PANEL KPIs ────────────────────────────────────────────────────────
-let kpiPeriod = 'abril';
-function setKpiPeriod(p, btn) {
-  kpiPeriod = p;
-  document.querySelectorAll('#kpis-tabs .ptab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderKPIs();
-}
-function renderKPIs() {
-  const el = document.getElementById('kpis-scroll');
-  if (!el) return;
-  const d = getPD(kpiPeriod);
-  const ops = KPI_OPS[kpiPeriod] || {};
-  const prev = kpiPeriod !== 'acumulado' ? getPrev(kpiPeriod) : null;
-  const vt = d.ventas_total;
-
-  function deltaStr(cur, prv) {
-    if (!prv || !prv) return '';
-    const d = cur - prv;
-    const pct = prv ? ((d / Math.abs(prv)) * 100).toFixed(1) : null;
-    const cls = d >= 0 ? 'up' : 'dn';
-    return `<span class="${cls}">${d >= 0 ? '▲' : '▼'} ${pct ? Math.abs(pct) + '%' : ''} vs mes ant.</span>`;
-  }
-
-  // Financieros (calculados automáticamente)
-  const financieros = [
-    { l:'Ventas', v: fmt(vt), s: prev ? deltaStr(vt, prev.ventas_total) : 'YTD acumulado', c:'#6366f1' },
-    { l:'Margen Bruto %', v: p(d.mb_total, vt), s: prev ? deltaStr(d.mb_total/vt, prev.mb_total/prev.ventas_total) : '', c:'#22d3a5' },
-    { l:'Comisiones %', v: p(d.comis_total, vt), s: prev ? `${fmt(d.comis_total)}` : '', c:'#fb923c' },
-    { l:'EBITDA', v: fmt(d.ebitda), s: prev ? deltaStr(d.ebitda, prev.ebitda) : '', c: d.ebitda >= 0 ? '#818cf8' : '#f87171' },
-    { l:'Resultado Neto', v: fmt(d.resultado), s: prev ? deltaStr(d.resultado, prev.resultado) : '', c: d.resultado >= 0 ? '#fcd34d' : '#f87171' },
-  ];
-
-  // Operacionales
-  const fmtN = n => n != null ? n.toLocaleString('es-ES') : '—';
-  const fmtEu = n => n != null ? '€' + Math.round(n).toLocaleString('es-ES') : '—';
-  const operacionales = [
-    { l:'Comidas servidas', v: fmtN(ops.comidas), s:'unidades en el período', c:'#22d3a5' },
-    { l:'Clientes activos', v: fmtN(ops.clientes), s:'empresas/cuentas', c:'#5b8dee' },
-    { l:'Cuentas a pagar', v: fmtEu(ops.ctas_pagar), s:'saldo cierre período', c:'#f87171' },
-    { l:'Cuentas a cobrar', v: fmtEu(ops.ctas_cobrar), s:'saldo cierre período', c:'#fcd34d' },
-    { l:'Empleados', v: fmtN(ops.empleados), s:'en plantilla al cierre', c:'#a78bfa' },
-  ];
-
-  const cardHTML = (items, cls) => items.map(k =>
-    `<div class="${cls}" style="--c:${k.c}">
-      <div class="kl">${k.l}</div>
-      <div class="kv" style="color:${k.c}">${k.v}</div>
-      <div class="ks">${k.s}</div>
-    </div>`
-  ).join('');
-
-  // Ratio CMV/Ventas y otros ratios útiles
-  const cmvPct = p(d.cmv_total, vt);
-  const comisNet = d.ventas_total - d.cmv_total - d.comis_total;
-
-  el.innerHTML = `
-    <div>
-      <div class="kpi-section-title">KPIs Financieros — calculados automáticamente</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">${cardHTML(financieros,'kpi-card')}</div>
-    </div>
-    <div style="margin-top:6px">
-      <div class="kpi-section-title">KPIs Operacionales — actualizar en Google Sheets · hoja KPIS</div>
-      <div class="kpi-grid-5">${cardHTML(operacionales,'kpi-ops-card')}</div>
-    </div>
-    <div style="margin-top:6px">
-      <div class="kpi-section-title">Ratios clave del período</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-        <div class="kpi-ops-card" style="--c:#f87171"><div class="kl">CMV / Ventas</div><div class="kv" style="color:var(--red)">${cmvPct}</div><div class="ks">costo mercadería vendida</div></div>
-        <div class="kpi-ops-card" style="--c:#fb923c"><div class="kl">Margen post-comisiones</div><div class="kv" style="color:var(--orange)">${fmt(comisNet)}</div><div class="ks">MB − Comisiones Kombo/Fudeat</div></div>
-        <div class="kpi-ops-card" style="--c:#22d3a5"><div class="kl">Sueldos / Ventas</div><div class="kv" style="color:var(--green)">${p(d.sueldos+d.cargas, vt)}</div><div class="ks">sueldos + cargas sociales</div></div>
-        <div class="kpi-ops-card" style="--c:#6366f1"><div class="kl">Scopely / Ventas</div><div class="kv" style="color:var(--accent-light)">${p((d.marcas.find(m=>m.n==='Scopely')||{v:0}).v, vt)}</div><div class="ks">concentración cliente principal</div></div>
-      </div>
-    </div>`;
-}
-
-// ── CMV SEMANAL ───────────────────────────────────────────────────────
-let cmvPeriod = 'abril';
-function setCmvPeriod(p, btn) {
-  cmvPeriod = p;
-  document.querySelectorAll('#cmv-tabs .ptab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderCMVSemanal();
-}
-function renderCMVSemanal() {
-  const el = document.getElementById('cmv-semanal-scroll');
-  if (!el) return;
-  const semanas = CMV_SEMANAL[cmvPeriod] || [];
-
-  if (semanas.length === 0) {
-    el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3)">
-      <div style="font-size:32px;margin-bottom:12px">📋</div>
-      <div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:6px">Sin datos para este período</div>
-      <div style="font-size:12px">Completar la hoja CMV_SEMANAL en Google Sheets</div>
-    </div>`;
-    return;
-  }
-
-  function pctColor(pct) {
-    if (pct <= 0) return 'cmv-pct-good';
-    if (pct <= 30) return 'cmv-pct-good';
-    if (pct <= 40) return 'cmv-pct-mid';
-    return 'cmv-pct-bad';
-  }
-
-  let html = '';
-  semanas.forEach(sem => {
-    const globalPct = sem.total_fact > 0 ? Math.round(sem.total_cmv / sem.total_fact * 100) : 0;
-    html += `<div class="cmv-semana-block">
-      <div class="cmv-semana-title">
-        <span>${sem.semana}</span>
-        <div class="stotals">
-          <div class="stot">Pax <span>${sem.total_pax.toLocaleString('es-ES')}</span></div>
-          <div class="stot">Facturación <span>€${Math.round(sem.total_fact).toLocaleString('es-ES')}</span></div>
-          <div class="stot">CMV total <span>€${Math.round(sem.total_cmv).toLocaleString('es-ES')}</span></div>
-          <div class="stot">CMV% <span class="${pctColor(globalPct)}">${globalPct}%</span></div>
-        </div>
-      </div>
-      <table class="cmv-table">
-        <thead><tr>
-          <th style="text-align:left">Negocio</th>
-          <th>Pax</th>
-          <th>€/unidad</th>
-          <th>Facturación</th>
-          <th>CMV</th>
-          <th>CMV%</th>
-        </tr></thead>
-        <tbody>`;
-
-    sem.negocios.forEach(neg => {
-      const pct = neg.fact > 0 && neg.cmv > 0 ? Math.round(neg.cmv / neg.fact * 100) : (neg.cmv > 0 ? null : 0);
-      const pctStr = pct != null ? `<span class="${pctColor(pct)}">${pct}%</span>` : '—';
-      html += `<tr>
-        <td>
-          <span style="width:8px;height:8px;border-radius:50%;background:${neg.color};display:inline-block;flex-shrink:0"></span>
-          ${neg.n}
-        </td>
-        <td>${neg.pax != null ? neg.pax.toLocaleString('es-ES') : '—'}</td>
-        <td>${neg.precio_u != null ? '€' + neg.precio_u.toFixed(2) : '—'}</td>
-        <td>${neg.fact != null ? '€' + Math.round(neg.fact).toLocaleString('es-ES') : '—'}</td>
-        <td style="color:var(--red)">€${Math.round(neg.cmv).toLocaleString('es-ES')}</td>
-        <td>${pctStr}</td>
-      </tr>`;
-    });
-
-    html += `</tbody>
-        <tfoot><tr class="cmv-total">
-          <td style="text-align:left;font-family:var(--font)">TOTAL SEMANA</td>
-          <td>${sem.total_pax.toLocaleString('es-ES')}</td>
-          <td>—</td>
-          <td>€${Math.round(sem.total_fact).toLocaleString('es-ES')}</td>
-          <td style="color:var(--red)">€${Math.round(sem.total_cmv).toLocaleString('es-ES')}</td>
-          <td><span class="${pctColor(globalPct)}">${globalPct}%</span></td>
-        </tr></tfoot>
-      </table>
-    </div>`;
-  });
-
-  el.innerHTML = html;
-}
-
 // ── INIT ─────────────────────────────────────────────────────────────────────
-fetchData().then(() => { renderOverview(); renderPnlCompare(); });
+// 1. Si hay cache → carga instantánea desde localStorage
+// 2. Si no hay cache → fetch a la API (primera vez)
+(function init() {
+  const hasCahce = loadFromCache();
+  renderOverview();
+  renderPnlCompare();
+  if (!hasCahce) {
+    // Primera vez: consulta la API automáticamente
+    fetchData();
+  }
+})();
 
 </script>
 </body>
