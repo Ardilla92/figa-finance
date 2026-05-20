@@ -166,7 +166,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .fc-bad{color:var(--red)}
 
 /* ── MARCAS ── */
-.marcas-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);flex:1;overflow-y:auto}
+.marcas-layout{display:flex;flex:1;overflow:hidden}
+.marcas-left{flex:1;overflow-y:auto;min-width:0}
+.marcas-chart-pane{width:310px;flex-shrink:0;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;padding:16px 14px;gap:0}
+.marcas-chart-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:14px}
+.marcas-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);min-height:100%}
+.marcas-grid.single{grid-template-columns:1fr 1fr}
 .marca-card{background:var(--surface);padding:18px 20px;transition:.1s}
 .marca-card:hover{background:var(--surface2)}
 .marca-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -374,14 +379,21 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="topbar">
       <span class="topbar-title">Por marca</span>
       <div class="ptabs" id="marcas-tabs">
-        <button class="ptab" onclick="setMarcasPeriod('enero',this)">Ene</button>
-        <button class="ptab" onclick="setMarcasPeriod('febrero',this)">Feb</button>
-        <button class="ptab" onclick="setMarcasPeriod('marzo',this)">Mar</button>
-        <button class="ptab active" onclick="setMarcasPeriod('abril',this)">Abr</button>
-        <button class="ptab" onclick="setMarcasPeriod('acumulado',this)">YTD</button>
+        <button class="ptab" onclick="selectMarcasTab('enero',this)">Ene</button>
+        <button class="ptab" onclick="selectMarcasTab('febrero',this)">Feb</button>
+        <button class="ptab" onclick="selectMarcasTab('marzo',this)">Mar</button>
+        <button class="ptab active" onclick="selectMarcasTab('abril',this)">Abr</button>
+        <button class="ptab" onclick="selectMarcasTab('acumulado',this)">YTD</button>
+      </div>
+      <span style="font-size:9px;color:var(--text3);margin-left:8px">Seleccioná 1 mes o 2 para comparar</span>
+    </div>
+    <div class="marcas-layout">
+      <div class="marcas-left"><div class="marcas-grid" id="marcas-grid"></div></div>
+      <div class="marcas-chart-pane" id="marcas-chart-pane">
+        <div class="marcas-chart-title" id="marcas-chart-title">Ventas por marca</div>
+        <canvas id="marcas-chart" style="max-height:480px"></canvas>
       </div>
     </div>
-    <div class="marcas-grid" id="marcas-grid"></div>
   </div>
 
   <!-- SUELDOS -->
@@ -688,6 +700,8 @@ function renderAll() {
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let ovPeriod='abril', pnlPeriod='abril', marcasPeriod='abril', sueldosPeriod='abril';
+let marcasSelected=['abril'];
+let marcasChartInst=null;
 let comparePeriods=['marzo','abril'];
 let compareMode=true;
 let expanded={}, allExp=false, sueldoExp={};
@@ -993,20 +1007,19 @@ function renderAnalisis(){
 
 
 
-function toggleMarcasPeriod(period, btn){
-  // Add/remove from comparePeriods
-  if(comparePeriods.includes(period)){
-    if(comparePeriods.length > 1) comparePeriods = comparePeriods.filter(p=>p!==period);
+function selectMarcasTab(period, btn){
+  // Toggle selection (max 2 periods)
+  if(marcasSelected.includes(period)){
+    if(marcasSelected.length > 1) marcasSelected = marcasSelected.filter(p=>p!==period);
   } else {
-    if(comparePeriods.length >= 2) comparePeriods.shift();
-    comparePeriods.push(period);
+    if(marcasSelected.length >= 2) marcasSelected.shift();
+    marcasSelected.push(period);
   }
-  compareMode = comparePeriods.length === 2;
-  marcasPeriod = comparePeriods[comparePeriods.length-1];
+  marcasPeriod = marcasSelected[marcasSelected.length-1];
   // Update tab highlights
   const map={Ene:'enero',Feb:'febrero',Mar:'marzo',Abr:'abril',YTD:'acumulado'};
   document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>{
-    b.classList.toggle('active', comparePeriods.includes(map[b.innerText]));
+    b.classList.toggle('active', marcasSelected.includes(map[b.innerText]));
   });
   renderMarcas();
 }
@@ -1017,7 +1030,7 @@ function showPanel(id,el){
   document.getElementById('panel-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='pnl')renderPnlCompare();
-  if(id==='marcas'){compareMode=comparePeriods.length===2;renderMarcas();}
+  if(id==='marcas') renderMarcas();
   if(id==='sueldos')renderSueldos();
   if(id==='rvf')renderRvf();
   if(id==='flujo')renderFlujo();
@@ -1331,12 +1344,78 @@ document.getElementById('pnl-body').innerHTML=body;
 
 // ── MARCAS ────────────────────────────────────────────────────────────────────
 function setMarcasPeriod(p,btn){marcasPeriod=p;document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMarcas();}
+function renderMarcasChart(){
+  const canvas = document.getElementById('marcas-chart');
+  const titleEl = document.getElementById('marcas-chart-title');
+  if(!canvas) return;
+  if(marcasChartInst){ marcasChartInst.destroy(); marcasChartInst=null; }
+
+  const isCompare = marcasSelected.length === 2;
+  const periods = isCompare ? marcasSelected : [marcasSelected[0]];
+  const colors = periods.map(p => {
+    const map = {enero:'#6366f1',febrero:'#22d3a5',marzo:'#fb923c',abril:'#818cf8',acumulado:'#fcd34d'};
+    return map[p]||'#6366f1';
+  });
+
+  // Collect all brand names with data
+  const allBrands = [...new Set(periods.flatMap(p => (getPD(p).marcas||[]).filter(m=>m.v>0).map(m=>m.n)))];
+  const sorted = allBrands.sort((a,b)=>{
+    const va = (getPD(periods[periods.length-1]).marcas||[]).find(m=>m.n===a)?.v||0;
+    const vb = (getPD(periods[periods.length-1]).marcas||[]).find(m=>m.n===b)?.v||0;
+    return vb-va;
+  });
+
+  const shortM = {enero:'Ene',febrero:'Feb',marzo:'Mar',abril:'Abr',acumulado:'YTD'};
+  if(titleEl) titleEl.textContent = isCompare
+    ? `Ventas — ${shortM[periods[0]]} vs ${shortM[periods[1]]}`
+    : `Ventas por marca — ${shortM[periods[0]]}`;
+
+  const datasets = periods.map((p,i) => ({
+    label: shortM[p],
+    data: sorted.map(n => {
+      const m = (getPD(p).marcas||[]).find(x=>x.n===n);
+      return m?.v||0;
+    }),
+    backgroundColor: colors[i]+'99',
+    borderColor: colors[i],
+    borderWidth: 1,
+    borderRadius: 4,
+  }));
+
+  marcasChartInst = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: sorted, datasets },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: isCompare, labels:{ color:'#9090a8', font:{size:10}, boxWidth:10 } },
+        tooltip: {
+          callbacks: { label: ctx => ' €'+Math.round(ctx.raw).toLocaleString('es-ES') }
+        }
+      },
+      scales: {
+        x: {
+          grid:{ color:'#26262e' },
+          ticks:{ color:'#50505e', font:{size:9}, callback: v => '€'+Math.round(v/1000)+'k' }
+        },
+        y: {
+          grid:{ color:'transparent' },
+          ticks:{ color:'#9090a8', font:{size:10} }
+        }
+      }
+    }
+  });
+}
+
 function renderMarcas(){
-  const isCompare = compareMode && comparePeriods.length === 2;
-  
+  const isCompare = marcasSelected.length === 2;
+  renderMarcasChart();  // siempre renderiza el gráfico derecho
+
   if(isCompare){
     // ── COMPARE: two columns side by side ──────────────────────────────────
-    const [p1, p2] = comparePeriods.map(k=>({key:k, data:getPD(k)}));
+    const [p1, p2] = marcasSelected.map(k=>({key:k, data:getPD(k)}));
     const allNames = [...new Set([
       ...(p1.data.marcas||[]).map(m=>m.n),
       ...(p2.data.marcas||[]).map(m=>m.n)
@@ -1414,7 +1493,7 @@ function renderMarcas(){
   }
 
   // ── SINGLE PERIOD ──────────────────────────────────────────────────────────
-  const d=getPD(marcasPeriod);
+  const d=getPD(marcasSelected[0]);
   const sorted=[...d.marcas].filter(m=>m.v>0).sort((a,b)=>b.v-a.v);
   const maxV=sorted[0]?.v||1;
   let htmlOut='';
