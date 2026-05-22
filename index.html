@@ -1,17 +1,3 @@
-
-
-function ventasComidaMarca(m){
-  if(m.n==='Scopely' && m.canales){
-    const comedor = m.canales.find(c=>c.n==='Comedor');
-    return comedor ? (comedor.v||m.v) : m.v;
-  }
-  return m.v||0;
-}
-
-function calcCMVPct(m){
-  const ventas = ventasComidaMarca(m);
-  return ventas > 0 ? ((m.cmv||0) / ventas * 100) : 0;
-}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -716,6 +702,7 @@ function renderAll() {
 let ovPeriod='abril', pnlPeriod='abril', marcasPeriod='abril', sueldosPeriod='abril';
 let marcasSelected=['abril'];
 let marcasChartInst=null;
+let rvfView='mensual';
 let comparePeriods=['marzo','abril'];
 let compareMode=true;
 let expanded={}, allExp=false, sueldoExp={};
@@ -1064,8 +1051,9 @@ function renderOverview(){
   const d=getPD(ovPeriod);
   const prev=ovPeriod==='acumulado'?null:getPrev(ovPeriod);
   const lbl={enero:'Enero 2026',febrero:'Febrero 2026',marzo:'Marzo 2026',abril:'Abril 2026',acumulado:'Ene–Abr 2026'}[ovPeriod];
-  const vt=d.ventas_total,mb=d.mb_total,eb=d.ebitda,res=d.resultado,ct=d.comis_total;
+  const vt=d.ventas_total,mb=d.mb_total,res=d.resultado,ct=d.comis_total;
   const ss={'enero':7500,'febrero':7772.70,'marzo':7772.70,'abril':7781.82}[ovPeriod]||(ovPeriod==='acumulado'?30827.22:0);
+  const eb=d.ebitda-ss;  // EBITDA real: incluye sueldos socios
   const pkg=d.packaging||0;
   const otros=d.otros_g||0;
   function badge(curr,prv){if(!prv||prv===0)return'';const dv=(curr-prv)/Math.abs(prv)*100;return`<span class="${dv>=0?'up':'dn'}">${dv>=0?'↑':'↓'} ${Math.abs(dv).toFixed(1)}% vs ant.</span>`;}
@@ -1356,6 +1344,22 @@ function renderPNL(){
 document.getElementById('pnl-body').innerHTML=body;
 }
 
+// ── HELPERS CMV ─────────────────────────────────────────────────────────────
+function ventasComidaMarca(m){
+  if(m.n==='Scopely'&&m.canales){
+    const comedor=m.canales.find(c=>c.n==='Comedor');
+    return comedor?(comedor.v||m.v):m.v;
+  }
+  return m.v||0;
+}
+function calcCMVPct(m){
+  const v=ventasComidaMarca(m);
+  return v>0?((m.cmv||0)/v*100):0;
+}
+function cmvColor(pct){
+  return pct<28?'var(--green)':pct<35?'var(--yellow)':'var(--red)';
+}
+
 // ── MARCAS ────────────────────────────────────────────────────────────────────
 function setMarcasPeriod(p,btn){marcasPeriod=p;document.querySelectorAll('#marcas-tabs .ptab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMarcas();}
 function renderMarcasChart(){
@@ -1513,21 +1517,28 @@ function renderMarcas(){
   let htmlOut='';
   sorted.forEach(m=>{
     const color=(MARCAS_META[m.n]||{color:'#666'}).color;
-    const ventasComida=ventasComidaMarca(m);
-    const cmvPct=calcCMVPct(m);
-    const cmvColor=cmvPct<28?'var(--green)':cmvPct<35?'var(--orange)':'var(--red)';
     const mb=m.v-(m.cmv||0);
     const mb_pct=m.v?(mb/m.v*100).toFixed(1):0;
     const share=(m.v/d.ventas_total*100).toFixed(1);
     const barW=Math.round(m.v/maxV*100);
+    const pct=calcCMVPct(m);
+    const pctCol=cmvColor(pct);
     htmlOut+=`<div class="marca-card">
-      <div class="marca-head"><div class="marca-name"><span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${m.n}</div><span class="marca-share">${share}% del total</span></div>
+      <div class="marca-head">
+        <div class="marca-name"><span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${m.n}</div>
+        <span class="marca-share">${share}% del total</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px;font-family:var(--mono);flex-wrap:wrap">
+        <span style="font-size:15px;font-weight:700;color:${color}">${fmt(m.v)}</span>
+        <span style="font-size:10px;color:var(--text3)">CMV</span>
+        <span style="font-size:13px;font-weight:700;color:var(--red)">${fmt(m.cmv||0)}</span>
+        <span style="font-size:11px;color:var(--text3)">·</span>
+        <span style="font-size:14px;font-weight:800;color:${pctCol}">${pct.toFixed(1)}%</span>
+      </div>
       <div class="marca-stats">
-        <div class="mstat"><div class="mstat-l">Ventas</div><div class="mstat-v" style="color:${color}">${fmt(m.v)}</div></div>
-        <div class="mstat"><div class="mstat-l">CMV €</div><div class="mstat-v" style="color:var(--red)">${fmt(m.cmv||0)}</div></div>
-        <div class="mstat"><div class="mstat-l">CMV %</div><div class="mstat-v" style="color:${cmvColor}">${cmvPct.toFixed(1)}%</div></div>
-        <div class="mstat"><div class="mstat-l">Margen bruto</div><div class="mstat-v" style="color:var(--green)">${fmt(mb)}</div></div>
+        <div class="mstat"><div class="mstat-l">MB €</div><div class="mstat-v" style="color:var(--green)">${fmt(mb)}</div></div>
         <div class="mstat"><div class="mstat-l">MB%</div><div class="mstat-v" style="color:${parseFloat(mb_pct)>60?'var(--green)':parseFloat(mb_pct)>35?'var(--orange)':'var(--red)'}">${mb_pct}%</div></div>
+        <div class="mstat"><div class="mstat-l">Comisiones</div><div class="mstat-v" style="color:var(--orange)">${fmt(m.comis||0)}</div></div>
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${barW}%;background:${color}"></div></div>
       ${m.canales&&m.canales.length?`<div style="margin-top:8px">${m.canales.map(ca=>`<div class="canal-mini"><span class="canal-mini-n">${ca.n}</span><span class="canal-mini-v">${fmt(ca.v)}</span></div>`).join('')}</div>`:''}
@@ -1561,7 +1572,7 @@ function renderSueldos(){
 
   secs.forEach((sec,idx)=>{
     const secPrev=secsPrev?secsPrev.find(s=>s.u===sec.u):null;
-    const isExp=sueldoExp[idx]!==false;
+    const isExp=sueldoExp[idx]===true;
     html+=`<div class="s-section">
       <div class="s-section-head" onclick="toggleSueldoSection(${idx})">
         <span class="s-sec-name">${sec.u}</span>
