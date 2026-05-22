@@ -306,11 +306,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <div class="nav-section">
     <div class="nav-label">YTD Ene–Abr 2026</div>
     <div class="sidebar-ytd">
-      <div class="ytd-row"><span class="yl">Ventas</span><span class="yv" style="color:var(--accent-light)">512.943€</span></div>
-      <div class="ytd-row"><span class="yl">MB%</span><span class="yv" style="color:var(--green)">70,9%</span></div>
-      <div class="ytd-row"><span class="yl">Comis%</span><span class="yv" style="color:var(--orange)">18,8%</span></div>
-      <div class="ytd-row"><span class="yl">EBITDA</span><span class="yv" style="color:var(--accent-light)">55.948€</span></div>
-      <div class="ytd-row"><span class="yl">Resultado</span><span class="yv" style="color:var(--yellow)">25.121€</span></div>
+      <div class="ytd-row"><span class="yl">Ventas</span><span class="yv" id="ytd-ventas" style="color:var(--accent-light)">—</span></div>
+      <div class="ytd-row"><span class="yl">MB%</span><span class="yv" id="ytd-mb" style="color:var(--green)">—</span></div>
+      <div class="ytd-row"><span class="yl">Comis%</span><span class="yv" id="ytd-comis" style="color:var(--orange)">—</span></div>
+      <div class="ytd-row"><span class="yl">EBITDA</span><span class="yv" id="ytd-ebitda" style="color:var(--accent-light)">—</span></div>
+      <div class="ytd-row"><span class="yl">Resultado</span><span class="yv" id="ytd-resultado" style="color:var(--yellow)">—</span></div>
     </div>
   </div>
   <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:8px">
@@ -602,10 +602,40 @@ const CACHE_KEY = 'figafinance_cache';
 
 // Aplica un objeto de datos del Sheet sobre las variables globales
 function applyApiData(json) {
-  if (json.data)        DATA        = json.data;
-  if (json.sueldos)     SUELDOS     = json.sueldos;
-  if (json.forecast)    Object.assign(FORECAST, json.forecast);
-  if (json.flujo)       Object.assign(CF, json.flujo);
+  if (json.data) {
+    // Smart merge: si la API devuelve 0 para un campo clave, mantiene el dato estático auditado
+    MESES.forEach(mes => {
+      const apiMes = (json.data && json.data[mes]) || {};
+      const staticMes = STATIC_DATA[mes] || {};
+      const apiMarcas = (apiMes.marcas || []).filter(m => m.v > 0);
+      DATA[mes] = {
+        ...staticMes,
+        ...apiMes,
+        ventas_total:  apiMes.ventas_total  || staticMes.ventas_total,
+        ventas_comida: apiMes.ventas_comida || staticMes.ventas_comida,
+        camareras:     apiMes.camareras     || staticMes.camareras,
+        cmv_total:     apiMes.cmv_total     || staticMes.cmv_total,
+        mb_total:      apiMes.mb_total      || staticMes.mb_total,
+        comis_total:   apiMes.comis_total   || staticMes.comis_total,
+        sueldos:       apiMes.sueldos       || staticMes.sueldos,
+        cargas:        apiMes.cargas        || staticMes.cargas,
+        resultado:     staticMes.resultado,  // siempre del estático (auditado)
+        ebitda:        staticMes.ebitda,     // siempre del estático (auditado)
+        marcas: apiMarcas.length >= 4 ? apiMarcas : staticMes.marcas,
+      };
+    });
+    // Meses nuevos (mayo+)
+    Object.keys(json.data).forEach(mes => {
+      if (!MESES.includes(mes)) DATA[mes] = json.data[mes];
+    });
+  }
+  // Sueldos: solo reemplaza si viene con datos reales
+  if (json.sueldos && Object.keys(json.sueldos).length > 0) {
+    const hasSueldos = Object.values(json.sueldos).some(arr => Array.isArray(arr) && arr.length > 0);
+    if (hasSueldos) SUELDOS = json.sueldos;
+  }
+  if (json.forecast && Object.keys(json.forecast).length > 0) Object.assign(FORECAST, json.forecast);
+  if (json.flujo    && Object.keys(json.flujo).length > 0)    Object.assign(CF, json.flujo);
   if (json.kpi_ops)     KPI_OPS     = json.kpi_ops;
   if (json.cmv_semanal) CMV_SEMANAL = json.cmv_semanal;
 }
@@ -678,6 +708,7 @@ async function refreshData() {
 // renderAll: re-renderiza el panel activo y los comunes
 function renderAll() {
   renderOverview();
+  renderSidebarYTD();
   renderPnlCompare();
   const active = document.querySelector('.panel.active');
   if (active) {
@@ -1047,13 +1078,27 @@ function setOvPeriod(p,btn){
 renderAnalisis();
 }
 
+function renderSidebarYTD(){
+  const acum = getAcum();
+  const enisaTotal = 1374.82; // solo marzo tiene ENISA
+  const ebitda_ytd = acum.resultado + enisaTotal; // EBITDA = Resultado + ENISA
+  const vt = acum.ventas_total;
+  const set = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt; };
+  set('ytd-ventas',  Math.round(vt).toLocaleString('es-ES')+'€');
+  set('ytd-mb',      (vt ? (acum.mb_total/vt*100).toFixed(1) : '—')+'%');
+  set('ytd-comis',   (vt ? (acum.comis_total/vt*100).toFixed(1) : '—')+'%');
+  set('ytd-ebitda',  Math.round(ebitda_ytd).toLocaleString('es-ES')+'€');
+  set('ytd-resultado', Math.round(acum.resultado).toLocaleString('es-ES')+'€');
+}
+
 function renderOverview(){
   const d=getPD(ovPeriod);
   const prev=ovPeriod==='acumulado'?null:getPrev(ovPeriod);
   const lbl={enero:'Enero 2026',febrero:'Febrero 2026',marzo:'Marzo 2026',abril:'Abril 2026',acumulado:'Ene–Abr 2026'}[ovPeriod];
   const vt=d.ventas_total,mb=d.mb_total,res=d.resultado,ct=d.comis_total;
   const ss={'enero':7500,'febrero':7772.70,'marzo':7772.70,'abril':7781.82}[ovPeriod]||(ovPeriod==='acumulado'?30827.22:0);
-  const eb=d.ebitda-ss;  // EBITDA real: incluye sueldos socios
+  const enisaMap={enero:0,febrero:0,marzo:1374.82,abril:0,acumulado:1374.82};
+  const eb = d.resultado + (enisaMap[ovPeriod]||0);  // EBITDA = Resultado + ENISA
   const pkg=d.packaging||0;
   const otros=d.otros_g||0;
   function badge(curr,prv){if(!prv||prv===0)return'';const dv=(curr-prv)/Math.abs(prv)*100;return`<span class="${dv>=0?'up':'dn'}">${dv>=0?'↑':'↓'} ${Math.abs(dv).toFixed(1)}% vs ant.</span>`;}
@@ -1585,15 +1630,32 @@ function renderSueldos(){
       </div>`;
     if(isExp){
       html+=`<div>`;
-      sec.emps.forEach(e=>{
+      if(sec.emps && sec.emps.length>0){
+        sec.emps.forEach(e=>{
+          const empPrev=null; // no prev breakdown at emp level
+          html+=`<div class="s-emp-row" style="grid-template-columns:1fr 110px 110px 110px 90px">
+            <span class="s-emp-name">${e.n}</span>
+            <span class="s-emp-val">${fmt(e.b)}</span>
+            <span class="s-emp-val">${fmt(e.c)}</span>
+            <span class="s-emp-total">${fmt(e.t)}</span>
+            <span style="font-size:11px;font-family:var(--mono);text-align:right;color:var(--text3)">—</span>
+          </div>`;
+        });
+      } else {
+        // Sin detalle de empleados (datos del Sheet sin desglose)
         html+=`<div class="s-emp-row" style="grid-template-columns:1fr 110px 110px 110px 90px">
-          <span class="s-emp-name">${e.n}</span>
-          <span class="s-emp-val">${fmt(e.b)}</span>
-          <span class="s-emp-val">${fmt(e.c)}</span>
-          <span class="s-emp-total">${fmt(e.t)}</span>
+          <span class="s-emp-name" style="color:var(--text2)">${sec.u}</span>
+          <span class="s-emp-val">${fmt(sec.tb)}</span>
+          <span class="s-emp-val">${fmt(sec.tc)}</span>
+          <span class="s-emp-total">${fmt(sec.tt)}</span>
           <span style="font-size:11px;font-family:var(--mono);text-align:right;color:var(--text3)">—</span>
         </div>`;
-      });
+        if(sec.empleados){
+          html+=`<div style="padding:6px 20px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border)">
+            ${sec.empleados} empleado${sec.empleados!==1?'s':''} · Cargar detalle en hoja SUELDOS del Sheet
+          </div>`;
+        }
+      }
       html+=`</div>`;
     }
     html+=`</div>`;
