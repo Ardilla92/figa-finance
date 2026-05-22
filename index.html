@@ -1,3 +1,17 @@
+
+
+function ventasComidaMarca(m){
+  if(m.n==='Scopely' && m.canales){
+    const comedor = m.canales.find(c=>c.n==='Comedor');
+    return comedor ? (comedor.v||m.v) : m.v;
+  }
+  return m.v||0;
+}
+
+function calcCMVPct(m){
+  const ventas = ventasComidaMarca(m);
+  return ventas > 0 ? ((m.cmv||0) / ventas * 100) : 0;
+}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1499,6 +1513,9 @@ function renderMarcas(){
   let htmlOut='';
   sorted.forEach(m=>{
     const color=(MARCAS_META[m.n]||{color:'#666'}).color;
+    const ventasComida=ventasComidaMarca(m);
+    const cmvPct=calcCMVPct(m);
+    const cmvColor=cmvPct<28?'var(--green)':cmvPct<35?'var(--orange)':'var(--red)';
     const mb=m.v-(m.cmv||0);
     const mb_pct=m.v?(mb/m.v*100).toFixed(1):0;
     const share=(m.v/d.ventas_total*100).toFixed(1);
@@ -1507,6 +1524,8 @@ function renderMarcas(){
       <div class="marca-head"><div class="marca-name"><span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${m.n}</div><span class="marca-share">${share}% del total</span></div>
       <div class="marca-stats">
         <div class="mstat"><div class="mstat-l">Ventas</div><div class="mstat-v" style="color:${color}">${fmt(m.v)}</div></div>
+        <div class="mstat"><div class="mstat-l">CMV €</div><div class="mstat-v" style="color:var(--red)">${fmt(m.cmv||0)}</div></div>
+        <div class="mstat"><div class="mstat-l">CMV %</div><div class="mstat-v" style="color:${cmvColor}">${cmvPct.toFixed(1)}%</div></div>
         <div class="mstat"><div class="mstat-l">Margen bruto</div><div class="mstat-v" style="color:var(--green)">${fmt(mb)}</div></div>
         <div class="mstat"><div class="mstat-l">MB%</div><div class="mstat-v" style="color:${parseFloat(mb_pct)>60?'var(--green)':parseFloat(mb_pct)>35?'var(--orange)':'var(--red)'}">${mb_pct}%</div></div>
       </div>
